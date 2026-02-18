@@ -182,27 +182,33 @@ backend:
 
   - task: "Mark Message Delivered API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "POST /api/messages/{message_id}/delivered - Deletes message from relay. Needs testing."
+      - working: true
+        agent: "testing"
+        comment: "Tested successfully - Marks messages as delivered and deletes them from server. Returns 404 for invalid message IDs."
 
   - task: "Contacts Management API"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "POST /api/contacts/add and GET /api/contacts/{user_id} - Contact management. Needs testing."
+      - working: false
+        agent: "testing"
+        comment: "Minor: GET contacts works correctly, but POST /api/contacts/add has MongoDB ObjectId serialization error (500 error). Core functionality works but response formatting needs fix."
 
 frontend:
   - task: "Welcome Screen"
