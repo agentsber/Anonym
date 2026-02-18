@@ -458,7 +458,9 @@ class SecureMessengerTester:
             # Test adding contact with invalid user
             try:
                 response = self.session.post(
-                    f"{BACKEND_URL}/contacts/add?user_id=invalid_user&contact_id={user2['id']}"
+                    f"{BACKEND_URL}/contacts/add",
+                    json={"user_id": "invalid_user", "contact_id": user2['id']},
+                    headers={"Content-Type": "application/json"}
                 )
                 
                 if response.status_code == 404:
