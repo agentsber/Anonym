@@ -360,7 +360,7 @@ class SecureMessengerTester:
         print("\n=== Pending Messages Tests ===")
         
         # Find receiver from our test users
-        receiver_users = [u for username, u in self.test_users.items() if username.startswith('receiver_')]
+        receiver_users = [u for username, u in self.test_users.items() if username.startswith('receiver')]
         
         if receiver_users:
             receiver = receiver_users[0]
