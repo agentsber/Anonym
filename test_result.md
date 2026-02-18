@@ -392,12 +392,7 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "Mark Message Read API"
-    - "Edit Message API"
-    - "Delete Message API"
-    - "Get User Status API"
-    - "Message History API"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
