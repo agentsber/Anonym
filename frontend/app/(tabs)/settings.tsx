@@ -6,15 +6,24 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/stores/authStore';
+import { useSecurityStore } from '../../src/stores/securityStore';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
+  const { 
+    isPinSet, 
+    isBiometricEnabled, 
+    isBiometricAvailable,
+    enableBiometric,
+    removePin 
+  } = useSecurityStore();
 
   const handleLogout = () => {
     Alert.alert(
@@ -52,6 +61,40 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleSetupPin = () => {
+    if (isPinSet) {
+      Alert.alert(
+        'PIN-код',
+        'Что вы хотите сделать?',
+        [
+          { text: 'Отмена', style: 'cancel' },
+          {
+            text: 'Изменить PIN',
+            onPress: () => router.push('/security/setup-pin'),
+          },
+          {
+            text: 'Удалить PIN',
+            style: 'destructive',
+            onPress: async () => {
+              await removePin();
+              Alert.alert('Готово', 'PIN-код удалён');
+            },
+          },
+        ]
+      );
+    } else {
+      router.push('/security/setup-pin');
+    }
+  };
+
+  const handleBiometricToggle = async (value: boolean) => {
+    if (!isPinSet) {
+      Alert.alert('Внимание', 'Сначала установите PIN-код');
+      return;
+    }
+    await enableBiometric(value);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView>
@@ -65,6 +108,39 @@ export default function SettingsScreen() {
               <Text style={styles.userId}>ID: {user?.id?.slice(0, 8)}...</Text>
             </View>
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Блокировка</Text>
+          
+          <TouchableOpacity style={styles.menuItem} onPress={handleSetupPin}>
+            <Ionicons name="keypad-outline" size={24} color="#007AFF" />
+            <View style={styles.menuItemContent}>
+              <Text style={styles.menuItemText}>PIN-код</Text>
+              <Text style={styles.menuItemSubtext}>
+                {isPinSet ? 'Установлен' : 'Не установлен'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+          </TouchableOpacity>
+          
+          {isBiometricAvailable && (
+            <View style={styles.switchItem}>
+              <Ionicons name="finger-print" size={24} color="#007AFF" />
+              <View style={styles.menuItemContent}>
+                <Text style={styles.menuItemText}>Биометрия</Text>
+                <Text style={styles.menuItemSubtext}>
+                  Отпечаток пальца / Face ID
+                </Text>
+              </View>
+              <Switch
+                value={isBiometricEnabled}
+                onValueChange={handleBiometricToggle}
+                trackColor={{ false: '#E0E0E0', true: '#34C759' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -106,13 +182,15 @@ export default function SettingsScreen() {
           
           <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={24} color="#007AFF" />
-            <Text style={styles.menuItemText}>Выйти</Text>
+            <Text style={[styles.menuItemText, { marginLeft: 12, flex: 1 }]}>Выйти</Text>
             <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
           </TouchableOpacity>
           
           <TouchableOpacity style={[styles.menuItem, styles.dangerItem]} onPress={handleDeleteAccount}>
             <Ionicons name="trash-outline" size={24} color="#FF3B30" />
-            <Text style={[styles.menuItemText, styles.dangerText]}>Удалить ключи и данные</Text>
+            <Text style={[styles.menuItemText, styles.dangerText, { marginLeft: 12, flex: 1 }]}>
+              Удалить ключи и данные
+            </Text>
             <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
           </TouchableOpacity>
         </View>
@@ -210,11 +288,27 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
   },
-  menuItemText: {
+  menuItemContent: {
     flex: 1,
+    marginLeft: 12,
+  },
+  menuItemText: {
     fontSize: 17,
     color: '#000',
-    marginLeft: 12,
+  },
+  menuItemSubtext: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
+  switchItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 1,
+    padding: 16,
+    borderRadius: 12,
   },
   dangerItem: {
     marginTop: 12,
