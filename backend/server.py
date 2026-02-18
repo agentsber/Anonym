@@ -359,6 +359,104 @@ async def get_contacts(user_id: str):
     
     return contact_infos
 
+# ==================== Media Endpoints ====================
+
+@api_router.post("/media/upload")
+async def upload_media(
+    sender_id: str = Form(...),
+    receiver_id: str = Form(...),
+    encrypted_data: str = Form(...),  # Base64 encoded encrypted media
+    ephemeral_key: str = Form(...),
+    media_type: str = Form(...),  # image or video
+    file_name: str = Form(default="media")
+):
+    """Upload encrypted media file for relay"""
+    # Verify users exist
+    sender = await db.users.find_one({"id": sender_id})
+    receiver = await db.users.find_one({"id": receiver_id})
+    
+    if not sender or not receiver:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    media_id = str(uuid.uuid4())
+    
+    # Store encrypted media in database (as base64)
+    media_doc = {
+        "id": media_id,
+        "sender_id": sender_id,
+        "receiver_id": receiver_id,
+        "encrypted_data": encrypted_data,
+        "ephemeral_key": ephemeral_key,
+        "media_type": media_type,
+        "file_name": file_name,
+        "status": "pending",
+        "created_at": datetime.utcnow()
+    }
+    
+    await db.media.insert_one(media_doc)
+    logger.info(f"Media {media_id} uploaded for relay")
+    
+    # Create message reference
+    message_id = str(uuid.uuid4())
+    message_doc = {
+        "id": message_id,
+        "sender_id": sender_id,
+        "receiver_id": receiver_id,
+        "encrypted_content": media_id,  # Reference to media
+        "ephemeral_key": ephemeral_key,
+        "message_type": media_type,
+        "status": "pending",
+        "timestamp": datetime.utcnow()
+    }
+    
+    await db.messages.insert_one(message_doc)
+    
+    # Notify receiver if online
+    if manager.is_online(receiver_id):
+        notification = {
+            "type": "new_message",
+            "message": {
+                "id": message_id,
+                "sender_id": sender_id,
+                "message_type": media_type,
+                "media_id": media_id,
+                "timestamp": message_doc["timestamp"].isoformat()
+            }
+        }
+        await manager.send_personal_message(notification, receiver_id)
+    
+    return {
+        "message_id": message_id,
+        "media_id": media_id,
+        "status": "uploaded"
+    }
+
+@api_router.get("/media/{media_id}")
+async def get_media(media_id: str):
+    """Get encrypted media by ID"""
+    media = await db.media.find_one({"id": media_id})
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
+    
+    return {
+        "id": media["id"],
+        "sender_id": media["sender_id"],
+        "encrypted_data": media["encrypted_data"],
+        "ephemeral_key": media["ephemeral_key"],
+        "media_type": media["media_type"],
+        "file_name": media["file_name"]
+    }
+
+@api_router.post("/media/{media_id}/delivered")
+async def mark_media_delivered(media_id: str):
+    """Mark media as delivered and delete from server"""
+    result = await db.media.find_one_and_delete({"id": media_id})
+    if not result:
+        raise HTTPException(status_code=404, detail="Media not found")
+    
+    logger.info(f"Media {media_id} delivered and deleted from server")
+    return {"status": "delivered", "media_id": media_id}
+
 # ==================== WebSocket Endpoint ====================
 
 @app.websocket("/ws/{user_id}")
