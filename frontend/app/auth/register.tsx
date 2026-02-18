@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -34,6 +35,7 @@ export default function RegisterScreen() {
       const available = await authApi.checkUsername(value);
       setIsAvailable(available);
     } catch (err) {
+      console.log('Check username error:', err);
       setIsAvailable(null);
     } finally {
       setIsChecking(false);
@@ -54,20 +56,21 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (username.length < 3) {
-      Alert.alert('Invalid Username', 'Username must be at least 3 characters');
+      Alert.alert('Ошибка', 'Имя пользователя должно быть не менее 3 символов');
       return;
     }
     
     if (!isAvailable) {
-      Alert.alert('Username Taken', 'Please choose a different username');
+      Alert.alert('Ошибка', 'Это имя пользователя уже занято');
       return;
     }
     
     try {
       await register(username);
       router.replace('/(tabs)');
-    } catch (err) {
-      // Error is handled in store
+    } catch (err: any) {
+      console.log('Registration error:', err);
+      Alert.alert('Ошибка регистрации', err.response?.data?.detail || 'Попробуйте позже');
     }
   };
 
@@ -90,47 +93,57 @@ export default function RegisterScreen() {
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.content}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="person-add" size={48} color="#007AFF" />
-          </View>
-          
-          <Text style={styles.title}>Choose a Username</Text>
-          <Text style={styles.description}>
-            This will be your unique identifier.{`\n`}Others can find you with this username.
-          </Text>
-          
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="username"
-              placeholderTextColor="#999"
-              value={username}
-              onChangeText={handleUsernameChange}
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={30}
-            />
-            <View style={styles.statusIcon}>
-              {getUsernameStatusIcon()}
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.content}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="person-add" size={48} color="#007AFF" />
+            </View>
+            
+            <Text style={styles.title}>Выберите имя</Text>
+            <Text style={styles.description}>
+              Это будет ваш уникальный идентификатор.{`\n`}Другие пользователи найдут вас по этому имени.
+            </Text>
+            
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="имя пользователя"
+                placeholderTextColor="#999"
+                value={username}
+                onChangeText={handleUsernameChange}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={30}
+              />
+              <View style={styles.statusIcon}>
+                {getUsernameStatusIcon()}
+              </View>
+            </View>
+            
+            {username.length > 0 && username.length < 3 && (
+              <Text style={styles.hint}>Минимум 3 символа</Text>
+            )}
+            
+            {isAvailable === false && (
+              <Text style={styles.errorHint}>Имя уже занято</Text>
+            )}
+            
+            {isAvailable === true && (
+              <Text style={styles.successHint}>Имя доступно</Text>
+            )}
+            
+            {error && (
+              <Text style={styles.error}>{error}</Text>
+            )}
+            
+            <View style={styles.keyInfo}>
+              <Ionicons name="key-outline" size={20} color="#666" />
+              <Text style={styles.keyInfoText}>
+                Ключи шифрования будут сгенерированы и сохранены на вашем устройстве.
+              </Text>
             </View>
           </View>
-          
-          {username.length > 0 && username.length < 3 && (
-            <Text style={styles.hint}>Minimum 3 characters</Text>
-          )}
-          
-          {error && (
-            <Text style={styles.error}>{error}</Text>
-          )}
-          
-          <View style={styles.keyInfo}>
-            <Ionicons name="key-outline" size={20} color="#666" />
-            <Text style={styles.keyInfoText}>
-              Encryption keys will be generated and stored securely on your device.
-            </Text>
-          </View>
-        </View>
+        </ScrollView>
         
         <View style={styles.footer}>
           <TouchableOpacity
@@ -144,7 +157,7 @@ export default function RegisterScreen() {
             {isLoading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.buttonText}>Create Account</Text>
+              <Text style={styles.buttonText}>Создать аккаунт</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -160,6 +173,9 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   content: {
     flex: 1,
@@ -203,6 +219,16 @@ const styles = StyleSheet.create({
   hint: {
     marginTop: 8,
     color: '#999',
+    fontSize: 13,
+  },
+  errorHint: {
+    marginTop: 8,
+    color: '#FF3B30',
+    fontSize: 13,
+  },
+  successHint: {
+    marginTop: 8,
+    color: '#34C759',
     fontSize: 13,
   },
   error: {

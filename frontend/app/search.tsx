@@ -42,7 +42,8 @@ export default function SearchScreen() {
         setNotFound(true);
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to search for user');
+      console.log('Search error:', err);
+      Alert.alert('Ошибка', 'Не удалось найти пользователя');
     } finally {
       setIsSearching(false);
     }
@@ -55,7 +56,8 @@ export default function SearchScreen() {
       await addContact(user.id, searchResult);
       router.replace(`/chat/${searchResult.id}`);
     } catch (err) {
-      Alert.alert('Error', 'Failed to add contact');
+      console.log('Add contact error:', err);
+      Alert.alert('Ошибка', 'Не удалось добавить контакт');
     }
   };
 
@@ -67,13 +69,13 @@ export default function SearchScreen() {
       >
         <View style={styles.content}>
           <Text style={styles.description}>
-            Enter the exact username of the person you want to message.
+            Введите точное имя пользователя для поиска.
           </Text>
           
           <View style={styles.searchContainer}>
             <TextInput
               style={styles.input}
-              placeholder="Enter username"
+              placeholder="Имя пользователя"
               placeholderTextColor="#999"
               value={username}
               onChangeText={(text) => {
@@ -106,9 +108,9 @@ export default function SearchScreen() {
           {notFound && (
             <View style={styles.notFoundCard}>
               <Ionicons name="person-outline" size={40} color="#8E8E93" />
-              <Text style={styles.notFoundText}>User not found</Text>
+              <Text style={styles.notFoundText}>Пользователь не найден</Text>
               <Text style={styles.notFoundSubtext}>
-                Make sure you entered the correct username
+                Проверьте правильность имени
               </Text>
             </View>
           )}
@@ -123,7 +125,7 @@ export default function SearchScreen() {
                   <Text style={styles.resultUsername}>@{searchResult.username}</Text>
                   <View style={styles.encryptedBadge}>
                     <Ionicons name="shield-checkmark" size={14} color="#34C759" />
-                    <Text style={styles.encryptedText}>E2E Encrypted</Text>
+                    <Text style={styles.encryptedText}>E2E шифрование</Text>
                   </View>
                 </View>
               </View>
@@ -133,7 +135,7 @@ export default function SearchScreen() {
                 onPress={handleStartChat}
               >
                 <Ionicons name="chatbubble" size={20} color="#FFFFFF" />
-                <Text style={styles.startChatText}>Start Secure Chat</Text>
+                <Text style={styles.startChatText}>Начать чат</Text>
               </TouchableOpacity>
             </View>
           )}

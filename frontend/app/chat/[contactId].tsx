@@ -114,7 +114,7 @@ export default function ChatScreen() {
     <>
       <Stack.Screen
         options={{
-          title: contact?.username ? `@${contact.username}` : 'Chat',
+          title: contact?.username ? `@${contact.username}` : 'Чат',
           headerRight: () => (
             <TouchableOpacity style={styles.headerButton}>
               <Ionicons name="shield-checkmark" size={20} color="#34C759" />
@@ -134,9 +134,9 @@ export default function ChatScreen() {
               <View style={styles.encryptionBadge}>
                 <Ionicons name="lock-closed" size={24} color="#007AFF" />
               </View>
-              <Text style={styles.emptyTitle}>End-to-End Encrypted</Text>
+              <Text style={styles.emptyTitle}>Сквозное шифрование</Text>
               <Text style={styles.emptyText}>
-                Messages in this chat are secured with{`\n`}end-to-end encryption.
+                Сообщения в этом чате защищены{`\n`}сквозным шифрованием.
               </Text>
             </View>
           ) : (
@@ -154,7 +154,7 @@ export default function ChatScreen() {
             <View style={styles.inputWrapper}>
               <TextInput
                 style={styles.input}
-                placeholder="Message"
+                placeholder="Сообщение"
                 placeholderTextColor="#8E8E93"
                 value={messageText}
                 onChangeText={setMessageText}

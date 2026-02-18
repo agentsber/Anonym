@@ -18,12 +18,12 @@ export default function SettingsScreen() {
 
   const handleLogout = () => {
     Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out? Your encryption keys will remain on this device.',
+      'Выйти',
+      'Вы уверены? Ключи шифрования останутся на устройстве.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Отмена', style: 'cancel' },
         {
-          text: 'Sign Out',
+          text: 'Выйти',
           style: 'destructive',
           onPress: async () => {
             await logout();
@@ -36,12 +36,12 @@ export default function SettingsScreen() {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Delete Account',
-      'This will permanently delete your encryption keys from this device. You will not be able to decrypt your messages. Are you sure?',
+      'Удалить данные',
+      'Это навсегда удалит ключи шифрования с устройства. Вы не сможете расшифровать свои сообщения. Продолжить?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Отмена', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Удалить',
           style: 'destructive',
           onPress: async () => {
             await logout();
@@ -68,14 +68,14 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Security</Text>
+          <Text style={styles.sectionTitle}>Безопасность</Text>
           
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
               <Ionicons name="shield-checkmark" size={24} color="#34C759" />
               <View style={styles.infoContent}>
-                <Text style={styles.infoTitle}>End-to-End Encrypted</Text>
-                <Text style={styles.infoText}>All messages are encrypted with your keys</Text>
+                <Text style={styles.infoTitle}>Сквозное шифрование</Text>
+                <Text style={styles.infoText}>Все сообщения зашифрованы вашими ключами</Text>
               </View>
             </View>
             
@@ -84,8 +84,8 @@ export default function SettingsScreen() {
             <View style={styles.infoRow}>
               <Ionicons name="key" size={24} color="#007AFF" />
               <View style={styles.infoContent}>
-                <Text style={styles.infoTitle}>Local Keys</Text>
-                <Text style={styles.infoText}>Encryption keys stored securely on device</Text>
+                <Text style={styles.infoTitle}>Локальные ключи</Text>
+                <Text style={styles.infoText}>Ключи хранятся только на устройстве</Text>
               </View>
             </View>
             
@@ -94,32 +94,32 @@ export default function SettingsScreen() {
             <View style={styles.infoRow}>
               <Ionicons name="server-outline" size={24} color="#FF9500" />
               <View style={styles.infoContent}>
-                <Text style={styles.infoTitle}>Zero Knowledge Server</Text>
-                <Text style={styles.infoText}>Server cannot read your messages</Text>
+                <Text style={styles.infoTitle}>Сервер без доступа</Text>
+                <Text style={styles.infoText}>Сервер не может прочитать сообщения</Text>
               </View>
             </View>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+          <Text style={styles.sectionTitle}>Аккаунт</Text>
           
           <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={24} color="#007AFF" />
-            <Text style={styles.menuItemText}>Sign Out</Text>
+            <Text style={styles.menuItemText}>Выйти</Text>
             <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
           </TouchableOpacity>
           
           <TouchableOpacity style={[styles.menuItem, styles.dangerItem]} onPress={handleDeleteAccount}>
             <Ionicons name="trash-outline" size={24} color="#FF3B30" />
-            <Text style={[styles.menuItemText, styles.dangerText]}>Delete Keys & Data</Text>
+            <Text style={[styles.menuItemText, styles.dangerText]}>Удалить ключи и данные</Text>
             <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
           </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>SecureChat v1.0</Text>
-          <Text style={styles.footerSubtext}>End-to-end encrypted messaging</Text>
+          <Text style={styles.footerSubtext}>Защищённый мессенджер</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

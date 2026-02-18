@@ -35,10 +35,10 @@ function RootLayoutContent() {
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="auth/register" options={{ title: 'Create Account', headerBackTitle: 'Back' }} />
-        <Stack.Screen name="auth/login" options={{ title: 'Sign In', headerBackTitle: 'Back' }} />
-        <Stack.Screen name="chat/[contactId]" options={{ title: 'Chat', headerBackTitle: 'Back' }} />
-        <Stack.Screen name="search" options={{ title: 'Find User', headerBackTitle: 'Back', presentation: 'modal' }} />
+        <Stack.Screen name="auth/register" options={{ title: 'Регистрация', headerBackTitle: 'Назад' }} />
+        <Stack.Screen name="auth/login" options={{ title: 'Вход', headerBackTitle: 'Назад' }} />
+        <Stack.Screen name="chat/[contactId]" options={{ title: 'Чат', headerBackTitle: 'Назад' }} />
+        <Stack.Screen name="search" options={{ title: 'Поиск', headerBackTitle: 'Назад', presentation: 'modal' }} />
       </Stack>
     </>
   );

@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,7 +29,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (username.length < 3) {
-      Alert.alert('Invalid Username', 'Username must be at least 3 characters');
+      Alert.alert('Ошибка', 'Имя пользователя должно быть не менее 3 символов');
       return;
     }
     
@@ -36,15 +37,18 @@ export default function LoginScreen() {
       await login(username);
       router.replace('/(tabs)');
     } catch (err: any) {
-      if (err.message?.includes('No encryption keys')) {
+      console.log('Login error:', err);
+      if (err.message?.includes('No encryption keys') || err.message?.includes('не найдены')) {
         Alert.alert(
-          'Keys Not Found',
-          'This device does not have encryption keys for this account. Please register on this device.',
+          'Ключи не найдены',
+          'На этом устройстве нет ключей шифрования для данного аккаунта. Зарегистрируйтесь заново.',
           [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Register', onPress: () => router.push('/auth/register') },
+            { text: 'Отмена', style: 'cancel' },
+            { text: 'Регистрация', onPress: () => router.push('/auth/register') },
           ]
         );
+      } else {
+        Alert.alert('Ошибка входа', err.response?.data?.detail || 'Пользователь не найден');
       }
     }
   };
@@ -55,40 +59,42 @@ export default function LoginScreen() {
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.content}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="log-in" size={48} color="#007AFF" />
-          </View>
-          
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.description}>
-            Enter your username to sign in.{`\n`}Your encryption keys must be on this device.
-          </Text>
-          
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="username"
-              placeholderTextColor="#999"
-              value={username}
-              onChangeText={handleUsernameChange}
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={30}
-            />
-          </View>
-          
-          {error && (
-            <Text style={styles.error}>{error}</Text>
-          )}
-          
-          <View style={styles.warning}>
-            <Ionicons name="warning-outline" size={20} color="#FF9500" />
-            <Text style={styles.warningText}>
-              Your encryption keys are stored locally. If you registered on a different device, you need to register again here.
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.content}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="log-in" size={48} color="#007AFF" />
+            </View>
+            
+            <Text style={styles.title}>Добро пожаловать</Text>
+            <Text style={styles.description}>
+              Введите ваше имя пользователя.{`\n`}Ключи шифрования должны быть на этом устройстве.
             </Text>
+            
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="имя пользователя"
+                placeholderTextColor="#999"
+                value={username}
+                onChangeText={handleUsernameChange}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={30}
+              />
+            </View>
+            
+            {error && (
+              <Text style={styles.error}>{error}</Text>
+            )}
+            
+            <View style={styles.warning}>
+              <Ionicons name="warning-outline" size={20} color="#FF9500" />
+              <Text style={styles.warningText}>
+                Ключи шифрования хранятся локально. Если вы регистрировались на другом устройстве, вам нужно зарегистрироваться заново.
+              </Text>
+            </View>
           </View>
-        </View>
+        </ScrollView>
         
         <View style={styles.footer}>
           <TouchableOpacity
@@ -102,7 +108,7 @@ export default function LoginScreen() {
             {isLoading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.buttonText}>Sign In</Text>
+              <Text style={styles.buttonText}>Войти</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -118,6 +124,9 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   content: {
     flex: 1,

@@ -11,7 +11,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
   const isOutgoing = message.isOutgoing;
   
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   };
   
   const getStatusIcon = () => {

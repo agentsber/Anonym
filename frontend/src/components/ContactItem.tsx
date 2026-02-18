@@ -24,11 +24,12 @@ export const ContactItem: React.FC<ContactItemProps> = ({
     if (days === 0) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (days === 1) {
-      return 'Yesterday';
+      return 'Вчера';
     } else if (days < 7) {
-      return date.toLocaleDateString([], { weekday: 'short' });
+      const weekdays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+      return weekdays[date.getDay()];
     } else {
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      return date.toLocaleDateString('ru-RU', { month: 'short', day: 'numeric' });
     }
   };
   
@@ -52,7 +53,7 @@ export const ContactItem: React.FC<ContactItemProps> = ({
         
         <View style={styles.messageRow}>
           <Text style={styles.lastMessage} numberOfLines={1}>
-            {lastMessage?.content || 'No messages yet'}
+            {lastMessage?.content || 'Нет сообщений'}
           </Text>
           {unreadCount > 0 && (
             <View style={styles.badge}>

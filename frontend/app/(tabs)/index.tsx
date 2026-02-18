@@ -63,9 +63,9 @@ export default function ChatsScreen() {
   const EmptyState = () => (
     <View style={styles.emptyState}>
       <Ionicons name="chatbubbles-outline" size={64} color="#CCC" />
-      <Text style={styles.emptyTitle}>No Conversations Yet</Text>
+      <Text style={styles.emptyTitle}>Нет чатов</Text>
       <Text style={styles.emptyText}>
-        Search for users to start a secure conversation
+        Найдите пользователей, чтобы начать{`\n`}защищённую переписку
       </Text>
     </View>
   );
@@ -129,10 +129,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
   },
 });

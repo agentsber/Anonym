@@ -26,21 +26,21 @@ export default function WelcomeScreen() {
         
         <Text style={styles.title}>SecureChat</Text>
         <Text style={styles.subtitle}>
-          End-to-end encrypted messaging.{`\n`}Your privacy matters.
+          Защищённый мессенджер{`\n`}со сквозным шифрованием
         </Text>
         
         <View style={styles.features}>
           <View style={styles.featureItem}>
             <Ionicons name="lock-closed" size={24} color="#007AFF" />
-            <Text style={styles.featureText}>E2E Encryption</Text>
+            <Text style={styles.featureText}>E2E{`\n`}шифрование</Text>
           </View>
           <View style={styles.featureItem}>
             <Ionicons name="eye-off" size={24} color="#007AFF" />
-            <Text style={styles.featureText}>No Data Stored</Text>
+            <Text style={styles.featureText}>Без хранения{`\n`}на сервере</Text>
           </View>
           <View style={styles.featureItem}>
             <Ionicons name="key" size={24} color="#007AFF" />
-            <Text style={styles.featureText}>Local Keys Only</Text>
+            <Text style={styles.featureText}>Локальные{`\n`}ключи</Text>
           </View>
         </View>
       </View>
@@ -50,14 +50,14 @@ export default function WelcomeScreen() {
           style={styles.primaryButton}
           onPress={() => router.push('/auth/register')}
         >
-          <Text style={styles.primaryButtonText}>Create Account</Text>
+          <Text style={styles.primaryButtonText}>Создать аккаунт</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
           style={styles.secondaryButton}
           onPress={() => router.push('/auth/login')}
         >
-          <Text style={styles.secondaryButtonText}>I already have an account</Text>
+          <Text style={styles.secondaryButtonText}>У меня уже есть аккаунт</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -85,11 +85,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
   },
   title: {
     fontSize: 36,
@@ -117,6 +112,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     fontWeight: '500',
+    textAlign: 'center',
   },
   buttons: {
     paddingHorizontal: 24,
