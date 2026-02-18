@@ -176,7 +176,7 @@ class SecureMessengerTester:
                 self.log_test("Existing username check", False, f"Exception: {str(e)}")
         
         # Test new username
-        new_username = f"newuser_{uuid.uuid4().hex[:8]}"
+        new_username = f"newuser{uuid.uuid4().hex[:8]}"
         try:
             response = self.session.get(f"{BACKEND_URL}/auth/check-username/{new_username}")
             
