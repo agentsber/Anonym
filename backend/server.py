@@ -66,6 +66,8 @@ class MessageSend(BaseModel):
     encrypted_content: str  # Base64 encoded encrypted message
     ephemeral_key: str  # Base64 encoded ephemeral public key for X3DH
     message_type: str = "text"  # text, image, video
+    reply_to_id: Optional[str] = None  # ID of message being replied to
+    auto_delete_seconds: Optional[int] = None  # Auto-delete timer (60, 3600, 86400)
 
 class MessageResponse(BaseModel):
     id: str
@@ -76,6 +78,13 @@ class MessageResponse(BaseModel):
     message_type: str
     status: str  # pending, delivered, read
     timestamp: datetime
+    reply_to_id: Optional[str] = None
+    auto_delete_seconds: Optional[int] = None
+    expires_at: Optional[datetime] = None
+
+class MessageEdit(BaseModel):
+    encrypted_content: str
+    ephemeral_key: str
 
 class LoginRequest(BaseModel):
     username: str
