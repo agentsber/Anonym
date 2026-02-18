@@ -94,25 +94,51 @@ class LoginRequest(BaseModel):
 class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[str, WebSocket] = {}
+        self.user_last_seen: Dict[str, datetime] = {}
     
     async def connect(self, user_id: str, websocket: WebSocket):
         await websocket.accept()
         self.active_connections[user_id] = websocket
+        self.user_last_seen[user_id] = datetime.utcnow()
         logger.info(f"User {user_id} connected via WebSocket")
+        # Broadcast online status
+        await self.broadcast_status(user_id, True)
     
     def disconnect(self, user_id: str):
         if user_id in self.active_connections:
             del self.active_connections[user_id]
+            self.user_last_seen[user_id] = datetime.utcnow()
             logger.info(f"User {user_id} disconnected from WebSocket")
     
     async def send_personal_message(self, message: dict, user_id: str):
         if user_id in self.active_connections:
-            await self.active_connections[user_id].send_json(message)
-            return True
+            try:
+                await self.active_connections[user_id].send_json(message)
+                return True
+            except:
+                return False
         return False
     
     def is_online(self, user_id: str) -> bool:
         return user_id in self.active_connections
+    
+    def get_last_seen(self, user_id: str) -> Optional[datetime]:
+        return self.user_last_seen.get(user_id)
+    
+    async def broadcast_status(self, user_id: str, online: bool):
+        """Broadcast user online/offline status to all connected users"""
+        status_msg = {
+            "type": "user_status",
+            "user_id": user_id,
+            "online": online,
+            "last_seen": datetime.utcnow().isoformat()
+        }
+        for uid, ws in self.active_connections.items():
+            if uid != user_id:
+                try:
+                    await ws.send_json(status_msg)
+                except:
+                    pass
 
 manager = ConnectionManager()
 
