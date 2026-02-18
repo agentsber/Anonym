@@ -131,15 +131,18 @@ backend:
 
   - task: "User Login API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "POST /api/auth/login - Returns user data if exists. Needs testing."
+      - working: true
+        agent: "testing"
+        comment: "Tested successfully - Returns user data for existing users, 404 for non-existent users. Working correctly."
 
   - task: "User Search API"
     implemented: true
