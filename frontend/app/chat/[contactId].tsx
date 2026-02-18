@@ -20,9 +20,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useChatStore } from '../../src/stores/chatStore';
-import { usersApi } from '../../src/services/api';
+import { usersApi, messagesApi } from '../../src/services/api';
 import { ChatBubble } from '../../src/components/ChatBubble';
-import { Message, User } from '../../src/types';
+import { Message, User, AUTO_DELETE_OPTIONS } from '../../src/types';
+import { encryptMessage } from '../../src/services/crypto';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -30,7 +31,7 @@ export default function ChatScreen() {
   const { contactId } = useLocalSearchParams<{ contactId: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
-  const { getMessages, sendMessage, sendMedia, fetchPendingMessages, setCurrentChat } = useChatStore();
+  const { getMessages, sendMessage, sendMedia, fetchPendingMessages, setCurrentChat, updateMessage, deleteMessage } = useChatStore();
   
   const [contact, setContact] = useState<User | null>(null);
   const [messageText, setMessageText] = useState('');
@@ -38,6 +39,17 @@ export default function ChatScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [showAttachment, setShowAttachment] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [contactOnline, setContactOnline] = useState(false);
+  const [contactLastSeen, setContactLastSeen] = useState<string | null>(null);
+  
+  // Reply & Edit state
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  
+  // Auto-delete timer
+  const [autoDeleteSeconds, setAutoDeleteSeconds] = useState<number | null>(null);
+  const [showTimerMenu, setShowTimerMenu] = useState(false);
+  
   const flatListRef = useRef<FlatList>(null);
 
   const messages = contactId ? getMessages(contactId) : [];
@@ -46,6 +58,7 @@ export default function ChatScreen() {
     if (contactId) {
       setCurrentChat(contactId);
       loadContact();
+      checkOnlineStatus();
     }
     
     return () => {
@@ -54,11 +67,12 @@ export default function ChatScreen() {
   }, [contactId]);
 
   useEffect(() => {
-    // Poll for new messages
+    // Poll for new messages and online status
     const interval = setInterval(() => {
       if (user && (user as any).exchangeSecretKey) {
         fetchPendingMessages(user.id, (user as any).exchangeSecretKey);
       }
+      checkOnlineStatus();
     }, 3000);
     
     return () => clearInterval(interval);
@@ -78,6 +92,30 @@ export default function ChatScreen() {
     }
   };
 
+  const checkOnlineStatus = async () => {
+    if (!contactId) return;
+    try {
+      const status = await usersApi.getStatus(contactId);
+      setContactOnline(status.online);
+      setContactLastSeen(status.last_seen);
+    } catch (err) {
+      // Ignore errors
+    }
+  };
+
+  const formatLastSeen = (lastSeen: string | null) => {
+    if (!lastSeen) return '';
+    const date = new Date(lastSeen);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'только что';
+    if (diffMins < 60) return `${diffMins} мин назад`;
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)} ч назад`;
+    return date.toLocaleDateString('ru-RU');
+  };
+
   const handleSend = async () => {
     if (!messageText.trim() || !user || !contact || isSending) return;
     
@@ -86,35 +124,84 @@ export default function ChatScreen() {
     setIsSending(true);
     
     try {
-      await sendMessage(
-        user.id,
-        contact.id,
-        text,
-        (user as any).exchangeSecretKey,
-        contact.public_key,
-        'text'
-      );
+      if (editingMessage) {
+        // Edit existing message
+        const { encrypted, ephemeralPublicKey } = encryptMessage(
+          text,
+          contact.public_key,
+          (user as any).exchangeSecretKey
+        );
+        
+        await messagesApi.edit(editingMessage.id, user.id, {
+          encrypted_content: encrypted,
+          ephemeral_key: ephemeralPublicKey,
+        });
+        
+        // Update local message
+        updateMessage(contactId!, editingMessage.id, { content: text, edited: true });
+        setEditingMessage(null);
+      } else {
+        // Send new message
+        await sendMessage(
+          user.id,
+          contact.id,
+          text,
+          (user as any).exchangeSecretKey,
+          contact.public_key,
+          'text',
+          replyTo?.id,
+          autoDeleteSeconds || undefined
+        );
+        setReplyTo(null);
+      }
       
-      // Scroll to bottom
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (err) {
       console.error('Failed to send message:', err);
-      setMessageText(text); // Restore message on failure
+      setMessageText(text);
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleReply = (message: Message) => {
+    setReplyTo(message);
+    setEditingMessage(null);
+  };
+
+  const handleEdit = (message: Message) => {
+    setEditingMessage(message);
+    setMessageText(message.content);
+    setReplyTo(null);
+  };
+
+  const handleDelete = async (message: Message, forEveryone: boolean) => {
+    try {
+      await messagesApi.delete(message.id, user!.id, forEveryone);
+      if (forEveryone) {
+        updateMessage(contactId!, message.id, { deleted: true });
+      } else {
+        deleteMessage(contactId!, message.id);
+      }
+    } catch (err) {
+      console.error('Failed to delete message:', err);
+      Alert.alert('Ошибка', 'Не удалось удалить сообщение');
+    }
+  };
+
+  const cancelReplyOrEdit = () => {
+    setReplyTo(null);
+    setEditingMessage(null);
+    setMessageText('');
   };
 
   const requestPermissions = async () => {
     if (Platform.OS !== 'web') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
-          'Разрешение требуется',
-          'Для отправки изображений необходим доступ к галерее'
-        );
+        Alert.alert('Разрешение требуется', 'Для отправки изображений необходим доступ к галерее');
         return false;
       }
     }
@@ -139,7 +226,6 @@ export default function ChatScreen() {
         await sendImageMessage(result.assets[0].base64, result.assets[0].fileName || 'image.jpg');
       }
     } catch (err) {
-      console.error('Image picker error:', err);
       Alert.alert('Ошибка', 'Не удалось выбрать изображение');
     }
   };
@@ -166,7 +252,6 @@ export default function ChatScreen() {
         await sendImageMessage(result.assets[0].base64, 'photo.jpg');
       }
     } catch (err) {
-      console.error('Camera error:', err);
       Alert.alert('Ошибка', 'Не удалось сделать фото');
     }
   };
@@ -191,7 +276,6 @@ export default function ChatScreen() {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (err) {
-      console.error('Failed to send image:', err);
       Alert.alert('Ошибка', 'Не удалось отправить изображение');
     } finally {
       setIsSending(false);
@@ -202,9 +286,31 @@ export default function ChatScreen() {
     setSelectedImage(uri);
   };
 
+  const getReplyMessage = (replyToId: string | undefined) => {
+    if (!replyToId) return undefined;
+    return messages.find(m => m.id === replyToId);
+  };
+
   const renderMessage = ({ item }: { item: Message }) => (
-    <ChatBubble message={item} onImagePress={handleImagePress} />
+    <ChatBubble 
+      message={item} 
+      onImagePress={handleImagePress}
+      onReply={handleReply}
+      onEdit={handleEdit}
+      onDelete={handleDelete}
+      replyMessage={getReplyMessage(item.reply_to_id)}
+    />
   );
+
+  const renderHeaderSubtitle = () => {
+    if (contactOnline) {
+      return <Text style={styles.onlineText}>в сети</Text>;
+    }
+    if (contactLastSeen) {
+      return <Text style={styles.lastSeenText}>был(а) {formatLastSeen(contactLastSeen)}</Text>;
+    }
+    return null;
+  };
 
   if (isLoading) {
     return (
@@ -218,11 +324,28 @@ export default function ChatScreen() {
     <>
       <Stack.Screen
         options={{
-          title: contact?.username ? `@${contact.username}` : 'Чат',
+          headerTitle: () => (
+            <View style={styles.headerTitle}>
+              <Text style={styles.headerName}>@{contact?.username}</Text>
+              {renderHeaderSubtitle()}
+            </View>
+          ),
           headerRight: () => (
-            <TouchableOpacity style={styles.headerButton}>
-              <Ionicons name="shield-checkmark" size={20} color="#34C759" />
-            </TouchableOpacity>
+            <View style={styles.headerRight}>
+              <TouchableOpacity 
+                style={styles.headerButton}
+                onPress={() => setShowTimerMenu(true)}
+              >
+                <Ionicons 
+                  name={autoDeleteSeconds ? "timer" : "timer-outline"} 
+                  size={20} 
+                  color={autoDeleteSeconds ? "#FF9500" : "#007AFF"} 
+                />
+              </TouchableOpacity>
+              <View style={styles.encryptedBadge}>
+                <Ionicons name="shield-checkmark" size={18} color="#34C759" />
+              </View>
+            </View>
           ),
         }}
       />
@@ -235,7 +358,7 @@ export default function ChatScreen() {
         >
           {messages.length === 0 ? (
             <View style={styles.emptyState}>
-              <View style={styles.encryptionBadge}>
+              <View style={styles.encryptionIcon}>
                 <Ionicons name="lock-closed" size={24} color="#007AFF" />
               </View>
               <Text style={styles.emptyTitle}>Сквозное шифрование</Text>
@@ -252,6 +375,30 @@ export default function ChatScreen() {
               contentContainerStyle={styles.messagesList}
               onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
             />
+          )}
+          
+          {/* Reply/Edit Preview */}
+          {(replyTo || editingMessage) && (
+            <View style={styles.replyPreviewBar}>
+              <View style={styles.replyPreviewContent}>
+                <Ionicons 
+                  name={editingMessage ? "pencil" : "arrow-undo"} 
+                  size={18} 
+                  color="#007AFF" 
+                />
+                <View style={styles.replyPreviewText}>
+                  <Text style={styles.replyPreviewLabel}>
+                    {editingMessage ? 'Редактирование' : 'Ответ'}
+                  </Text>
+                  <Text style={styles.replyPreviewMessage} numberOfLines={1}>
+                    {(editingMessage || replyTo)?.content}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={cancelReplyOrEdit}>
+                <Ionicons name="close" size={24} color="#8E8E93" />
+              </TouchableOpacity>
+            </View>
           )}
           
           <View style={styles.inputContainer}>
@@ -290,6 +437,49 @@ export default function ChatScreen() {
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
+        
+        {/* Timer Menu */}
+        <Modal
+          visible={showTimerMenu}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowTimerMenu(false)}
+        >
+          <TouchableOpacity 
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowTimerMenu(false)}
+          >
+            <View style={styles.timerMenu}>
+              <Text style={styles.timerTitle}>Исчезающие сообщения</Text>
+              <Text style={styles.timerSubtitle}>Сообщения будут удалены после прочтения</Text>
+              
+              {AUTO_DELETE_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.label}
+                  style={[
+                    styles.timerOption,
+                    autoDeleteSeconds === option.value && styles.timerOptionSelected
+                  ]}
+                  onPress={() => {
+                    setAutoDeleteSeconds(option.value);
+                    setShowTimerMenu(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.timerOptionText,
+                    autoDeleteSeconds === option.value && styles.timerOptionTextSelected
+                  ]}>
+                    {option.label}
+                  </Text>
+                  {autoDeleteSeconds === option.value && (
+                    <Ionicons name="checkmark" size={20} color="#007AFF" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </Modal>
         
         {/* Attachment Modal */}
         <Modal
@@ -375,8 +565,32 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
+  headerTitle: {
+    alignItems: 'center',
+  },
+  headerName: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#000',
+  },
+  onlineText: {
+    fontSize: 12,
+    color: '#34C759',
+  },
+  lastSeenText: {
+    fontSize: 12,
+    color: '#8E8E93',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   headerButton: {
-    padding: 8,
+    padding: 4,
+  },
+  encryptedBadge: {
+    padding: 4,
   },
   emptyState: {
     flex: 1,
@@ -384,7 +598,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 32,
   },
-  encryptionBadge: {
+  encryptionIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -407,6 +621,34 @@ const styles = StyleSheet.create({
   },
   messagesList: {
     paddingVertical: 12,
+  },
+  replyPreviewBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#F5F5F5',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#E0E0E0',
+  },
+  replyPreviewContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 10,
+  },
+  replyPreviewText: {
+    flex: 1,
+  },
+  replyPreviewLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  replyPreviewMessage: {
+    fontSize: 14,
+    color: '#666',
   },
   inputContainer: {
     flexDirection: 'row',
@@ -451,6 +693,47 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
+  },
+  timerMenu: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    paddingBottom: 34,
+    paddingHorizontal: 20,
+  },
+  timerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+    textAlign: 'center',
+  },
+  timerSubtitle: {
+    fontSize: 14,
+    color: '#8E8E93',
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  timerOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+  timerOptionSelected: {
+    backgroundColor: '#E8F4FF',
+  },
+  timerOptionText: {
+    fontSize: 16,
+    color: '#000',
+  },
+  timerOptionTextSelected: {
+    color: '#007AFF',
+    fontWeight: '500',
   },
   attachmentSheet: {
     backgroundColor: '#FFFFFF',
