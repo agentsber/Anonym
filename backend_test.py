@@ -79,7 +79,7 @@ class SecureMessengerTester:
         print("\n=== User Registration Tests ===")
         
         # Test valid registration
-        test_username = f"testuser_{uuid.uuid4().hex[:8]}"
+        test_username = f"testuser{uuid.uuid4().hex[:8]}"
         keys = self.generate_test_keys()
         
         registration_data = {
