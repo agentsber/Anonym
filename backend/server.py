@@ -311,7 +311,8 @@ async def get_pending_messages(user_id: str):
     """Get all pending messages for a user"""
     messages = await db.messages.find({
         "receiver_id": user_id,
-        "status": "pending"
+        "status": "pending",
+        "deleted": {"$ne": True}
     }).to_list(1000)
     
     return [MessageResponse(
@@ -322,7 +323,10 @@ async def get_pending_messages(user_id: str):
         ephemeral_key=msg["ephemeral_key"],
         message_type=msg["message_type"],
         status=msg["status"],
-        timestamp=msg["timestamp"]
+        timestamp=msg["timestamp"],
+        reply_to_id=msg.get("reply_to_id"),
+        auto_delete_seconds=msg.get("auto_delete_seconds"),
+        expires_at=msg.get("expires_at")
     ) for msg in messages]
 
 @api_router.post("/messages/{message_id}/delivered")
@@ -335,6 +339,102 @@ async def mark_message_delivered(message_id: str):
     logger.info(f"Message {message_id} delivered and deleted from server")
     return {"status": "delivered", "message_id": message_id}
 
+@api_router.post("/messages/{message_id}/read")
+async def mark_message_read(message_id: str, reader_id: str):
+    """Mark message as read and notify sender"""
+    message = await db.messages.find_one({"id": message_id})
+    if not message:
+        # Message already delivered and deleted, but we can still notify
+        pass
+    
+    # Notify sender that message was read
+    if message and manager.is_online(message["sender_id"]):
+        notification = {
+            "type": "message_read",
+            "message_id": message_id,
+            "reader_id": reader_id,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        await manager.send_personal_message(notification, message["sender_id"])
+    
+    return {"status": "read", "message_id": message_id}
+
+@api_router.put("/messages/{message_id}/edit")
+async def edit_message(message_id: str, sender_id: str, edit_data: MessageEdit):
+    """Edit a message (only sender can edit)"""
+    message = await db.messages.find_one({"id": message_id, "sender_id": sender_id})
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found or not authorized")
+    
+    await db.messages.update_one(
+        {"id": message_id},
+        {
+            "$set": {
+                "encrypted_content": edit_data.encrypted_content,
+                "ephemeral_key": edit_data.ephemeral_key,
+                "edited": True,
+                "edited_at": datetime.utcnow()
+            }
+        }
+    )
+    
+    # Notify receiver
+    if manager.is_online(message["receiver_id"]):
+        notification = {
+            "type": "message_edited",
+            "message_id": message_id,
+            "sender_id": sender_id,
+            "encrypted_content": edit_data.encrypted_content,
+            "ephemeral_key": edit_data.ephemeral_key,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        await manager.send_personal_message(notification, message["receiver_id"])
+    
+    return {"status": "edited", "message_id": message_id}
+
+@api_router.delete("/messages/{message_id}")
+async def delete_message(message_id: str, sender_id: str, for_everyone: bool = False):
+    """Delete a message (only sender can delete for everyone)"""
+    message = await db.messages.find_one({"id": message_id})
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+    
+    if for_everyone:
+        if message["sender_id"] != sender_id:
+            raise HTTPException(status_code=403, detail="Only sender can delete for everyone")
+        
+        await db.messages.update_one(
+            {"id": message_id},
+            {"$set": {"deleted": True, "deleted_at": datetime.utcnow()}}
+        )
+        
+        # Notify receiver
+        if manager.is_online(message["receiver_id"]):
+            notification = {
+                "type": "message_deleted",
+                "message_id": message_id,
+                "sender_id": sender_id,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+            await manager.send_personal_message(notification, message["receiver_id"])
+    else:
+        # Just mark as deleted locally (handled on client)
+        pass
+    
+    return {"status": "deleted", "message_id": message_id, "for_everyone": for_everyone}
+
+@api_router.get("/users/{user_id}/status")
+async def get_user_status(user_id: str):
+    """Get user online status"""
+    online = manager.is_online(user_id)
+    last_seen = manager.get_last_seen(user_id)
+    
+    return {
+        "user_id": user_id,
+        "online": online,
+        "last_seen": last_seen.isoformat() if last_seen else None
+    }
+
 @api_router.get("/messages/history/{user_id}/{contact_id}", response_model=List[MessageResponse])
 async def get_message_history(user_id: str, contact_id: str):
     """Get message history between two users (pending messages on server)"""
@@ -342,7 +442,8 @@ async def get_message_history(user_id: str, contact_id: str):
         "$or": [
             {"sender_id": user_id, "receiver_id": contact_id},
             {"sender_id": contact_id, "receiver_id": user_id}
-        ]
+        ],
+        "deleted": {"$ne": True}
     }).sort("timestamp", 1).to_list(1000)
     
     return [MessageResponse(
@@ -353,7 +454,10 @@ async def get_message_history(user_id: str, contact_id: str):
         ephemeral_key=msg["ephemeral_key"],
         message_type=msg["message_type"],
         status=msg["status"],
-        timestamp=msg["timestamp"]
+        timestamp=msg["timestamp"],
+        reply_to_id=msg.get("reply_to_id"),
+        auto_delete_seconds=msg.get("auto_delete_seconds"),
+        expires_at=msg.get("expires_at")
     ) for msg in messages]
 
 # ==================== Contacts Endpoints ====================
