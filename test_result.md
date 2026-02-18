@@ -212,51 +212,63 @@ backend:
 
   - task: "Edit Message API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "PUT /api/messages/{message_id}/edit - Allows sender to edit message. Notifies receiver via WebSocket. NEW FEATURE - needs testing."
+      - working: true
+        agent: "testing"
+        comment: "Tested successfully - Only sender can edit messages (returns 404 for unauthorized users), accepts encrypted_content and ephemeral_key, updates message correctly. WebSocket notifications working."
 
   - task: "Delete Message API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "DELETE /api/messages/{message_id} - Deletes message for everyone or locally. NEW FEATURE - needs testing."
+      - working: true
+        agent: "testing"
+        comment: "Tested successfully - Only sender can delete for everyone (returns 403 for unauthorized users), marks message as deleted, handles both local and global deletion scenarios. WebSocket notifications working."
 
   - task: "Get User Status API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "GET /api/users/{user_id}/status - Returns online status and last_seen. NEW FEATURE - needs testing."
+      - working: true
+        agent: "testing"
+        comment: "Tested successfully - Returns correct JSON structure with user_id, online status (boolean), and last_seen timestamp. Handles non-existent users gracefully by returning offline status."
 
   - task: "Message History API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "GET /api/messages/history/{user_id}/{contact_id} - Gets message history between users. NEW FEATURE - needs testing."
+      - working: true
+        agent: "testing"
+        comment: "Tested successfully - Returns list of messages between two users, includes all required message fields (id, sender_id, receiver_id, etc.), handles invalid user IDs by returning empty list. Message ordering and structure verified."
 
   - task: "Contacts Management API"
     implemented: true
