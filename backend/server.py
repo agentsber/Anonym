@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,10 +6,10 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional, Dict
 import uuid
 from datetime import datetime
-
+import json
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -19,38 +19,363 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
+# Create the main app
 app = FastAPI()
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-# Define Models
-class StatusCheck(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+# ==================== Models ====================
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+class UserCreate(BaseModel):
+    username: str
+    public_key: str  # Base64 encoded public key
+    identity_key: str  # Base64 encoded identity key for X3DH
+    signed_prekey: str  # Base64 encoded signed prekey
+    prekey_signature: str  # Base64 encoded signature
 
-# Add your routes to the router instead of directly to app
+class UserResponse(BaseModel):
+    id: str
+    username: str
+    public_key: str
+    identity_key: str
+    signed_prekey: str
+    prekey_signature: str
+    created_at: datetime
+
+class UserPublicInfo(BaseModel):
+    id: str
+    username: str
+    public_key: str
+    identity_key: str
+    signed_prekey: str
+    prekey_signature: str
+
+class MessageSend(BaseModel):
+    sender_id: str
+    receiver_id: str
+    encrypted_content: str  # Base64 encoded encrypted message
+    ephemeral_key: str  # Base64 encoded ephemeral public key for X3DH
+    message_type: str = "text"  # text, image, video
+
+class MessageResponse(BaseModel):
+    id: str
+    sender_id: str
+    receiver_id: str
+    encrypted_content: str
+    ephemeral_key: str
+    message_type: str
+    status: str  # pending, delivered, read
+    timestamp: datetime
+
+class LoginRequest(BaseModel):
+    username: str
+
+# ==================== WebSocket Connection Manager ====================
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, WebSocket] = {}
+    
+    async def connect(self, user_id: str, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections[user_id] = websocket
+        logger.info(f"User {user_id} connected via WebSocket")
+    
+    def disconnect(self, user_id: str):
+        if user_id in self.active_connections:
+            del self.active_connections[user_id]
+            logger.info(f"User {user_id} disconnected from WebSocket")
+    
+    async def send_personal_message(self, message: dict, user_id: str):
+        if user_id in self.active_connections:
+            await self.active_connections[user_id].send_json(message)
+            return True
+        return False
+    
+    def is_online(self, user_id: str) -> bool:
+        return user_id in self.active_connections
+
+manager = ConnectionManager()
+
+# ==================== Auth Endpoints ====================
+
+@api_router.post("/auth/register", response_model=UserResponse)
+async def register_user(user: UserCreate):
+    """Register a new user with username and public keys"""
+    # Check if username already exists
+    existing_user = await db.users.find_one({"username": user.username.lower()})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already taken")
+    
+    # Validate username format
+    if len(user.username) < 3 or len(user.username) > 30:
+        raise HTTPException(status_code=400, detail="Username must be 3-30 characters")
+    
+    if not user.username.isalnum():
+        raise HTTPException(status_code=400, detail="Username must be alphanumeric")
+    
+    user_id = str(uuid.uuid4())
+    user_doc = {
+        "id": user_id,
+        "username": user.username.lower(),
+        "public_key": user.public_key,
+        "identity_key": user.identity_key,
+        "signed_prekey": user.signed_prekey,
+        "prekey_signature": user.prekey_signature,
+        "created_at": datetime.utcnow()
+    }
+    
+    await db.users.insert_one(user_doc)
+    logger.info(f"New user registered: {user.username}")
+    
+    return UserResponse(**user_doc)
+
+@api_router.post("/auth/login", response_model=UserResponse)
+async def login_user(request: LoginRequest):
+    """Login user by username - returns user info if exists"""
+    user = await db.users.find_one({"username": request.username.lower()})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return UserResponse(
+        id=user["id"],
+        username=user["username"],
+        public_key=user["public_key"],
+        identity_key=user["identity_key"],
+        signed_prekey=user["signed_prekey"],
+        prekey_signature=user["prekey_signature"],
+        created_at=user["created_at"]
+    )
+
+@api_router.get("/auth/check-username/{username}")
+async def check_username(username: str):
+    """Check if username is available"""
+    existing = await db.users.find_one({"username": username.lower()})
+    return {"available": existing is None}
+
+# ==================== User Endpoints ====================
+
+@api_router.get("/users/search", response_model=Optional[UserPublicInfo])
+async def search_user(username: str):
+    """Search for a user by exact username match"""
+    user = await db.users.find_one({"username": username.lower()})
+    if not user:
+        return None
+    
+    return UserPublicInfo(
+        id=user["id"],
+        username=user["username"],
+        public_key=user["public_key"],
+        identity_key=user["identity_key"],
+        signed_prekey=user["signed_prekey"],
+        prekey_signature=user["prekey_signature"]
+    )
+
+@api_router.get("/users/{user_id}", response_model=UserPublicInfo)
+async def get_user(user_id: str):
+    """Get user public info by ID"""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return UserPublicInfo(
+        id=user["id"],
+        username=user["username"],
+        public_key=user["public_key"],
+        identity_key=user["identity_key"],
+        signed_prekey=user["signed_prekey"],
+        prekey_signature=user["prekey_signature"]
+    )
+
+# ==================== Message Endpoints ====================
+
+@api_router.post("/messages/send", response_model=MessageResponse)
+async def send_message(message: MessageSend):
+    """Send an encrypted message - server acts as relay"""
+    # Verify sender exists
+    sender = await db.users.find_one({"id": message.sender_id})
+    if not sender:
+        raise HTTPException(status_code=404, detail="Sender not found")
+    
+    # Verify receiver exists
+    receiver = await db.users.find_one({"id": message.receiver_id})
+    if not receiver:
+        raise HTTPException(status_code=404, detail="Receiver not found")
+    
+    message_id = str(uuid.uuid4())
+    message_doc = {
+        "id": message_id,
+        "sender_id": message.sender_id,
+        "receiver_id": message.receiver_id,
+        "encrypted_content": message.encrypted_content,
+        "ephemeral_key": message.ephemeral_key,
+        "message_type": message.message_type,
+        "status": "pending",
+        "timestamp": datetime.utcnow()
+    }
+    
+    await db.messages.insert_one(message_doc)
+    logger.info(f"Message {message_id} stored for relay")
+    
+    # Try to send via WebSocket if receiver is online
+    if manager.is_online(message.receiver_id):
+        notification = {
+            "type": "new_message",
+            "message": {
+                "id": message_id,
+                "sender_id": message.sender_id,
+                "encrypted_content": message.encrypted_content,
+                "ephemeral_key": message.ephemeral_key,
+                "message_type": message.message_type,
+                "timestamp": message_doc["timestamp"].isoformat()
+            }
+        }
+        await manager.send_personal_message(notification, message.receiver_id)
+    
+    return MessageResponse(
+        id=message_id,
+        sender_id=message.sender_id,
+        receiver_id=message.receiver_id,
+        encrypted_content=message.encrypted_content,
+        ephemeral_key=message.ephemeral_key,
+        message_type=message.message_type,
+        status="pending",
+        timestamp=message_doc["timestamp"]
+    )
+
+@api_router.get("/messages/pending/{user_id}", response_model=List[MessageResponse])
+async def get_pending_messages(user_id: str):
+    """Get all pending messages for a user"""
+    messages = await db.messages.find({
+        "receiver_id": user_id,
+        "status": "pending"
+    }).to_list(1000)
+    
+    return [MessageResponse(
+        id=msg["id"],
+        sender_id=msg["sender_id"],
+        receiver_id=msg["receiver_id"],
+        encrypted_content=msg["encrypted_content"],
+        ephemeral_key=msg["ephemeral_key"],
+        message_type=msg["message_type"],
+        status=msg["status"],
+        timestamp=msg["timestamp"]
+    ) for msg in messages]
+
+@api_router.post("/messages/{message_id}/delivered")
+async def mark_message_delivered(message_id: str):
+    """Mark message as delivered and delete from server (relay complete)"""
+    result = await db.messages.find_one_and_delete({"id": message_id})
+    if not result:
+        raise HTTPException(status_code=404, detail="Message not found")
+    
+    logger.info(f"Message {message_id} delivered and deleted from server")
+    return {"status": "delivered", "message_id": message_id}
+
+@api_router.get("/messages/history/{user_id}/{contact_id}", response_model=List[MessageResponse])
+async def get_message_history(user_id: str, contact_id: str):
+    """Get message history between two users (pending messages on server)"""
+    messages = await db.messages.find({
+        "$or": [
+            {"sender_id": user_id, "receiver_id": contact_id},
+            {"sender_id": contact_id, "receiver_id": user_id}
+        ]
+    }).sort("timestamp", 1).to_list(1000)
+    
+    return [MessageResponse(
+        id=msg["id"],
+        sender_id=msg["sender_id"],
+        receiver_id=msg["receiver_id"],
+        encrypted_content=msg["encrypted_content"],
+        ephemeral_key=msg["ephemeral_key"],
+        message_type=msg["message_type"],
+        status=msg["status"],
+        timestamp=msg["timestamp"]
+    ) for msg in messages]
+
+# ==================== Contacts Endpoints ====================
+
+@api_router.post("/contacts/add")
+async def add_contact(user_id: str, contact_id: str):
+    """Add a contact to user's contact list"""
+    # Verify both users exist
+    user = await db.users.find_one({"id": user_id})
+    contact = await db.users.find_one({"id": contact_id})
+    
+    if not user or not contact:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if contact already exists
+    existing = await db.contacts.find_one({
+        "user_id": user_id,
+        "contact_id": contact_id
+    })
+    
+    if existing:
+        return {"status": "already_exists"}
+    
+    contact_doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "contact_id": contact_id,
+        "created_at": datetime.utcnow()
+    }
+    
+    await db.contacts.insert_one(contact_doc)
+    return {"status": "added", "contact": contact_doc}
+
+@api_router.get("/contacts/{user_id}", response_model=List[UserPublicInfo])
+async def get_contacts(user_id: str):
+    """Get all contacts for a user"""
+    contacts = await db.contacts.find({"user_id": user_id}).to_list(1000)
+    
+    contact_infos = []
+    for contact in contacts:
+        user = await db.users.find_one({"id": contact["contact_id"]})
+        if user:
+            contact_infos.append(UserPublicInfo(
+                id=user["id"],
+                username=user["username"],
+                public_key=user["public_key"],
+                identity_key=user["identity_key"],
+                signed_prekey=user["signed_prekey"],
+                prekey_signature=user["prekey_signature"]
+            ))
+    
+    return contact_infos
+
+# ==================== WebSocket Endpoint ====================
+
+@app.websocket("/ws/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
+    """WebSocket connection for real-time message delivery"""
+    await manager.connect(user_id, websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # Handle ping/pong for connection keep-alive
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        manager.disconnect(user_id)
+
+# ==================== Health Check ====================
+
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Secure Messenger API", "status": "running"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.dict()
-    status_obj = StatusCheck(**status_dict)
-    _ = await db.status_checks.insert_one(status_obj.dict())
-    return status_obj
-
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    status_checks = await db.status_checks.find().to_list(1000)
-    return [StatusCheck(**status_check) for status_check in status_checks]
+@api_router.get("/health")
+async def health_check():
+    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
 # Include the router in the main app
 app.include_router(api_router)
@@ -62,13 +387,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
