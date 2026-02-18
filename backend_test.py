@@ -424,9 +424,7 @@ class SecureMessengerTester:
             # Test adding contact
             try:
                 response = self.session.post(
-                    f"{BACKEND_URL}/contacts/add",
-                    json={"user_id": user1['id'], "contact_id": user2['id']},
-                    headers={"Content-Type": "application/json"}
+                    f"{BACKEND_URL}/contacts/add?user_id={user1['id']}&contact_id={user2['id']}"
                 )
                 
                 if response.status_code == 200:
