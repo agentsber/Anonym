@@ -330,7 +330,12 @@ async def add_contact(user_id: str, contact_id: str):
     }
     
     await db.contacts.insert_one(contact_doc)
-    return {"status": "added", "contact": contact_doc}
+    # Return serializable response (without MongoDB _id)
+    return {
+        "status": "added", 
+        "contact_id": contact_id,
+        "id": contact_doc["id"]
+    }
 
 @api_router.get("/contacts/{user_id}", response_model=List[UserPublicInfo])
 async def get_contacts(user_id: str):
