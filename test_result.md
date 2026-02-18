@@ -195,6 +195,66 @@ backend:
         agent: "testing"
         comment: "Tested successfully - Marks messages as delivered and deletes them from server. Returns 404 for invalid message IDs."
 
+  - task: "Mark Message Read API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "POST /api/messages/{message_id}/read - Marks message as read and notifies sender via WebSocket. NEW FEATURE - needs testing."
+
+  - task: "Edit Message API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "PUT /api/messages/{message_id}/edit - Allows sender to edit message. Notifies receiver via WebSocket. NEW FEATURE - needs testing."
+
+  - task: "Delete Message API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "DELETE /api/messages/{message_id} - Deletes message for everyone or locally. NEW FEATURE - needs testing."
+
+  - task: "Get User Status API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "GET /api/users/{user_id}/status - Returns online status and last_seen. NEW FEATURE - needs testing."
+
+  - task: "Message History API"
+    implemented: true
+    working: "NA"
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "GET /api/messages/history/{user_id}/{contact_id} - Gets message history between users. NEW FEATURE - needs testing."
+
   - task: "Contacts Management API"
     implemented: true
     working: false
