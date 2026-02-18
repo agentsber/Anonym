@@ -272,8 +272,8 @@ class SecureMessengerTester:
         print("\n=== Messaging Tests ===")
         
         # Create two test users for messaging
-        sender_username = f"sender_{uuid.uuid4().hex[:8]}"
-        receiver_username = f"receiver_{uuid.uuid4().hex[:8]}"
+        sender_username = f"sender{uuid.uuid4().hex[:8]}"
+        receiver_username = f"receiver{uuid.uuid4().hex[:8]}"
         
         for username in [sender_username, receiver_username]:
             keys = self.generate_test_keys()
