@@ -2,9 +2,10 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 import { User, Message } from '../types';
 
+// Get API URL from environment (no hardcoded fallback for production compatibility)
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
                 process.env.EXPO_PUBLIC_BACKEND_URL || 
-                'https://e2e-messenger-build.preview.emergentagent.com';
+                '';
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
