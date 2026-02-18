@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User, Message, Chat } from '../types';
-import { messagesApi, contactsApi, usersApi } from '../services/api';
+import { User, Message } from '../types';
+import { messagesApi, contactsApi, mediaApi } from '../services/api';
 import { encryptMessage, decryptMessage, generateRandomId } from '../services/crypto';
 
 const STORAGE_KEYS = {
@@ -25,6 +25,15 @@ interface ChatState {
     senderSecretKey: string,
     receiverPublicKey: string,
     messageType?: 'text' | 'image' | 'video'
+  ) => Promise<void>;
+  sendMedia: (
+    senderId: string,
+    receiverId: string,
+    mediaBase64: string,
+    senderSecretKey: string,
+    receiverPublicKey: string,
+    mediaType: 'image' | 'video',
+    fileName: string
   ) => Promise<void>;
   fetchPendingMessages: (userId: string, secretKey: string) => Promise<void>;
   setCurrentChat: (contactId: string | null) => void;
@@ -136,24 +145,116 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
+  sendMedia: async (
+    senderId: string,
+    receiverId: string,
+    mediaBase64: string,
+    senderSecretKey: string,
+    receiverPublicKey: string,
+    mediaType: 'image' | 'video',
+    fileName: string
+  ) => {
+    try {
+      const localId = generateRandomId();
+      
+      // Create local message (optimistic update)
+      const localMessage: Message = {
+        id: localId,
+        sender_id: senderId,
+        receiver_id: receiverId,
+        content: mediaBase64, // Store base64 locally
+        message_type: mediaType,
+        status: 'sending',
+        timestamp: new Date(),
+        isOutgoing: true,
+      };
+      
+      // Add to local state
+      const { chats } = get();
+      const chatMessages = chats.get(receiverId) || [];
+      const newChats = new Map(chats);
+      newChats.set(receiverId, [...chatMessages, localMessage]);
+      set({ chats: newChats });
+      
+      // Encrypt media
+      const { encrypted, ephemeralPublicKey } = encryptMessage(
+        mediaBase64,
+        receiverPublicKey,
+        senderSecretKey
+      );
+      
+      // Upload to server
+      const response = await mediaApi.upload({
+        sender_id: senderId,
+        receiver_id: receiverId,
+        encrypted_data: encrypted,
+        ephemeral_key: ephemeralPublicKey,
+        media_type: mediaType,
+        file_name: fileName,
+      });
+      
+      // Update message status
+      const updatedChats = new Map(get().chats);
+      const messages = updatedChats.get(receiverId) || [];
+      const updatedMessages = messages.map(m => 
+        m.id === localId 
+          ? { ...m, id: response.message_id, status: 'sent' as const } 
+          : m
+      );
+      updatedChats.set(receiverId, updatedMessages);
+      set({ chats: updatedChats });
+      
+      // Save to local storage
+      await get().saveLocalMessages(senderId);
+    } catch (error) {
+      console.error('Failed to send media:', error);
+      set({ error: 'Failed to send media' });
+      throw error;
+    }
+  },
+
   fetchPendingMessages: async (userId: string, secretKey: string) => {
     try {
       const pendingMessages = await messagesApi.getPending(userId);
       
       for (const msg of pendingMessages) {
-        // Decrypt message
-        const decrypted = decryptMessage(
-          msg.encrypted_content,
-          msg.ephemeral_key,
-          secretKey
-        );
+        let content = '';
         
-        if (decrypted) {
+        if (msg.message_type === 'image' || msg.message_type === 'video') {
+          // Fetch and decrypt media
+          try {
+            const mediaData = await mediaApi.get(msg.encrypted_content);
+            const decrypted = decryptMessage(
+              mediaData.encrypted_data,
+              mediaData.ephemeral_key,
+              secretKey
+            );
+            if (decrypted) {
+              content = decrypted; // Base64 image/video data
+              await mediaApi.markDelivered(msg.encrypted_content);
+            }
+          } catch (err) {
+            console.error('Failed to fetch media:', err);
+            continue;
+          }
+        } else {
+          // Decrypt text message
+          const decrypted = decryptMessage(
+            msg.encrypted_content,
+            msg.ephemeral_key,
+            secretKey
+          );
+          if (decrypted) {
+            content = decrypted;
+          }
+        }
+        
+        if (content) {
           const message: Message = {
             id: msg.id,
             sender_id: msg.sender_id,
             receiver_id: msg.receiver_id,
-            content: decrypted,
+            content,
             message_type: msg.message_type,
             status: 'delivered',
             timestamp: new Date(msg.timestamp),
