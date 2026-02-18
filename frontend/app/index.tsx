@@ -1,30 +1,146 @@
-import { Text, View, StyleSheet, Image } from "react-native";
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '../src/stores/authStore';
 
-const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+export default function WelcomeScreen() {
+  const router = useRouter();
+  const { user } = useAuthStore();
 
-export default function Index() {
-  console.log(EXPO_PUBLIC_BACKEND_URL, "EXPO_PUBLIC_BACKEND_URL");
+  React.useEffect(() => {
+    if (user) {
+      router.replace('/(tabs)');
+    }
+  }, [user]);
 
   return (
-    <View style={styles.container}>
-      <Image
-        source={require("../assets/images/app-image.png")}
-        style={styles.image}
-      />
-    </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        <View style={styles.logoContainer}>
+          <View style={styles.logo}>
+            <Ionicons name="shield-checkmark" size={80} color="#FFFFFF" />
+          </View>
+        </View>
+        
+        <Text style={styles.title}>SecureChat</Text>
+        <Text style={styles.subtitle}>
+          End-to-end encrypted messaging.{`\n`}Your privacy matters.
+        </Text>
+        
+        <View style={styles.features}>
+          <View style={styles.featureItem}>
+            <Ionicons name="lock-closed" size={24} color="#007AFF" />
+            <Text style={styles.featureText}>E2E Encryption</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <Ionicons name="eye-off" size={24} color="#007AFF" />
+            <Text style={styles.featureText}>No Data Stored</Text>
+          </View>
+          <View style={styles.featureItem}>
+            <Ionicons name="key" size={24} color="#007AFF" />
+            <Text style={styles.featureText}>Local Keys Only</Text>
+          </View>
+        </View>
+      </View>
+      
+      <View style={styles.buttons}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => router.push('/auth/register')}
+        >
+          <Text style={styles.primaryButtonText}>Create Account</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={() => router.push('/auth/login')}
+        >
+          <Text style={styles.secondaryButtonText}>I already have an account</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0c0c0c",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: '#FFFFFF',
   },
-  image: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "contain",
+  content: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  logoContainer: {
+    marginBottom: 24,
+  },
+  logo: {
+    width: 140,
+    height: 140,
+    borderRadius: 35,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  title: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 12,
+  },
+  subtitle: {
+    fontSize: 17,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 40,
+  },
+  features: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+  },
+  featureItem: {
+    alignItems: 'center',
+  },
+  featureText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  buttons: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  primaryButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: '#007AFF',
+    fontSize: 17,
+    fontWeight: '500',
   },
 });

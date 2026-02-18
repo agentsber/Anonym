@@ -1,0 +1,238 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '../../src/stores/authStore';
+
+export default function SettingsScreen() {
+  const router = useRouter();
+  const { user, logout } = useAuthStore();
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out? Your encryption keys will remain on this device.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            router.replace('/');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your encryption keys from this device. You will not be able to decrypt your messages. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            router.replace('/');
+          },
+        },
+      ]
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <ScrollView>
+        <View style={styles.section}>
+          <View style={styles.profileCard}>
+            <View style={styles.avatar}>
+              <Ionicons name="person" size={40} color="#FFFFFF" />
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.username}>@{user?.username}</Text>
+              <Text style={styles.userId}>ID: {user?.id?.slice(0, 8)}...</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Security</Text>
+          
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Ionicons name="shield-checkmark" size={24} color="#34C759" />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoTitle}>End-to-End Encrypted</Text>
+                <Text style={styles.infoText}>All messages are encrypted with your keys</Text>
+              </View>
+            </View>
+            
+            <View style={styles.separator} />
+            
+            <View style={styles.infoRow}>
+              <Ionicons name="key" size={24} color="#007AFF" />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoTitle}>Local Keys</Text>
+                <Text style={styles.infoText}>Encryption keys stored securely on device</Text>
+              </View>
+            </View>
+            
+            <View style={styles.separator} />
+            
+            <View style={styles.infoRow}>
+              <Ionicons name="server-outline" size={24} color="#FF9500" />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoTitle}>Zero Knowledge Server</Text>
+                <Text style={styles.infoText}>Server cannot read your messages</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          
+          <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={24} color="#007AFF" />
+            <Text style={styles.menuItemText}>Sign Out</Text>
+            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={[styles.menuItem, styles.dangerItem]} onPress={handleDeleteAccount}>
+            <Ionicons name="trash-outline" size={24} color="#FF3B30" />
+            <Text style={[styles.menuItemText, styles.dangerText]}>Delete Keys & Data</Text>
+            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>SecureChat v1.0</Text>
+          <Text style={styles.footerSubtext}>End-to-end encrypted messaging</Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F2F2F7',
+  },
+  section: {
+    marginTop: 24,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8E8E93',
+    textTransform: 'uppercase',
+    marginLeft: 16,
+    marginBottom: 8,
+  },
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    padding: 16,
+    borderRadius: 12,
+  },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileInfo: {
+    marginLeft: 16,
+  },
+  username: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#000',
+  },
+  userId: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginTop: 4,
+  },
+  infoCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    borderRadius: 12,
+    padding: 16,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoContent: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000',
+  },
+  infoText: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#E0E0E0',
+    marginVertical: 12,
+    marginLeft: 36,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 1,
+    padding: 16,
+    borderRadius: 12,
+  },
+  menuItemText: {
+    flex: 1,
+    fontSize: 17,
+    color: '#000',
+    marginLeft: 12,
+  },
+  dangerItem: {
+    marginTop: 12,
+  },
+  dangerText: {
+    color: '#FF3B30',
+  },
+  footer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  footerText: {
+    fontSize: 14,
+    color: '#8E8E93',
+  },
+  footerSubtext: {
+    fontSize: 12,
+    color: '#C7C7CC',
+    marginTop: 4,
+  },
+});
