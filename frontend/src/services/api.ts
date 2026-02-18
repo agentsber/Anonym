@@ -46,6 +46,11 @@ export const usersApi = {
     const response = await api.get(`/users/${userId}`);
     return response.data;
   },
+
+  getStatus: async (userId: string): Promise<{ online: boolean; last_seen: string | null }> => {
+    const response = await api.get(`/users/${userId}/status`);
+    return response.data;
+  },
 };
 
 export const messagesApi = {
@@ -55,6 +60,8 @@ export const messagesApi = {
     encrypted_content: string;
     ephemeral_key: string;
     message_type: string;
+    reply_to_id?: string;
+    auto_delete_seconds?: number;
   }) => {
     const response = await api.post('/messages/send', data);
     return response.data;
@@ -67,6 +74,30 @@ export const messagesApi = {
 
   markDelivered: async (messageId: string) => {
     const response = await api.post(`/messages/${messageId}/delivered`);
+    return response.data;
+  },
+
+  markRead: async (messageId: string, readerId: string) => {
+    const response = await api.post(`/messages/${messageId}/read`, null, {
+      params: { reader_id: readerId },
+    });
+    return response.data;
+  },
+
+  edit: async (messageId: string, senderId: string, data: {
+    encrypted_content: string;
+    ephemeral_key: string;
+  }) => {
+    const response = await api.put(`/messages/${messageId}/edit`, data, {
+      params: { sender_id: senderId },
+    });
+    return response.data;
+  },
+
+  delete: async (messageId: string, senderId: string, forEveryone: boolean = false) => {
+    const response = await api.delete(`/messages/${messageId}`, {
+      params: { sender_id: senderId, for_everyone: forEveryone },
+    });
     return response.data;
   },
 };
