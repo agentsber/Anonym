@@ -71,6 +71,42 @@ export const messagesApi = {
   },
 };
 
+export const mediaApi = {
+  upload: async (data: {
+    sender_id: string;
+    receiver_id: string;
+    encrypted_data: string;
+    ephemeral_key: string;
+    media_type: string;
+    file_name: string;
+  }) => {
+    const formData = new FormData();
+    formData.append('sender_id', data.sender_id);
+    formData.append('receiver_id', data.receiver_id);
+    formData.append('encrypted_data', data.encrypted_data);
+    formData.append('ephemeral_key', data.ephemeral_key);
+    formData.append('media_type', data.media_type);
+    formData.append('file_name', data.file_name);
+    
+    const response = await api.post('/media/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  get: async (mediaId: string) => {
+    const response = await api.get(`/media/${mediaId}`);
+    return response.data;
+  },
+
+  markDelivered: async (mediaId: string) => {
+    const response = await api.post(`/media/${mediaId}/delivered`);
+    return response.data;
+  },
+};
+
 export const contactsApi = {
   add: async (userId: string, contactId: string) => {
     const response = await api.post('/contacts/add', null, {
