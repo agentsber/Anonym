@@ -197,15 +197,18 @@ backend:
 
   - task: "Mark Message Read API"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "POST /api/messages/{message_id}/read - Marks message as read and notifies sender via WebSocket. NEW FEATURE - needs testing."
+      - working: true
+        agent: "testing"
+        comment: "Tested successfully - API accepts valid message IDs and reader IDs, returns correct status response. Handles non-existent messages gracefully. WebSocket notifications working correctly."
 
   - task: "Edit Message API"
     implemented: true
