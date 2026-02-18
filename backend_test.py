@@ -290,7 +290,7 @@ class SecureMessengerTester:
             except Exception as e:
                 print(f"Failed to create test user {username}: {str(e)}")
         
-        if len([u for u in self.test_users.keys() if u.startswith(('sender_', 'receiver_'))]) >= 2:
+        if len([u for u in self.test_users.keys() if u.startswith(('sender', 'receiver'))]) >= 2:
             sender = self.test_users[sender_username]
             receiver = self.test_users[receiver_username]
             
