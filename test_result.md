@@ -167,6 +167,9 @@ backend:
       - working: true
         agent: "main"
         comment: "POST /api/messages/send - Stores encrypted message for relay. Tested with curl."
+      - working: true
+        agent: "testing"
+        comment: "Enhanced version tested successfully - Now accepts reply_to_id and auto_delete_seconds parameters. Auto-delete calculates expires_at timestamp correctly. Backward compatibility maintained for basic messages without new parameters."
 
   - task: "Get Pending Messages API"
     implemented: true
