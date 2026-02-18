@@ -315,10 +315,7 @@ metadata:
 
 test_plan:
   current_focus:
-    - "User Registration API"
-    - "User Login API"
-    - "Send Message API"
-    - "Mark Message Delivered API"
+    - "Contacts Management API"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
