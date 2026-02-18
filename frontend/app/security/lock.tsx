@@ -1,0 +1,258 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Vibration,
+  Platform,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useSecurityStore } from '../../src/stores/securityStore';
+
+const PIN_LENGTH = 4;
+const MAX_ATTEMPTS = 5;
+
+export default function LockScreen() {
+  const router = useRouter();
+  const {
+    verifyPin,
+    unlock,
+    isBiometricEnabled,
+    isBiometricAvailable,
+    authenticateWithBiometric,
+    failedAttempts,
+  } = useSecurityStore();
+  
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  useEffect(() => {
+    // Try biometric on mount
+    if (isBiometricEnabled && isBiometricAvailable) {
+      handleBiometric();
+    }
+  }, []);
+
+  const handleBiometric = async () => {
+    const success = await authenticateWithBiometric();
+    if (success) {
+      unlock();
+      router.replace('/(tabs)');
+    }
+  };
+
+  const handleNumberPress = async (num: string) => {
+    if (pin.length >= PIN_LENGTH || isVerifying) return;
+    
+    const newPin = pin + num;
+    setPin(newPin);
+    setError('');
+    
+    if (newPin.length === PIN_LENGTH) {
+      setIsVerifying(true);
+      const isValid = await verifyPin(newPin);
+      
+      if (isValid) {
+        unlock();
+        router.replace('/(tabs)');
+      } else {
+        if (Platform.OS !== 'web') {
+          Vibration.vibrate(200);
+        }
+        setError(`Неверный PIN. Осталось попыток: ${MAX_ATTEMPTS - failedAttempts - 1}`);
+        setPin('');
+        
+        if (failedAttempts + 1 >= MAX_ATTEMPTS) {
+          setError('Превышено число попыток. Данные могут быть удалены.');
+        }
+      }
+      setIsVerifying(false);
+    }
+  };
+
+  const handleDelete = () => {
+    if (pin.length > 0) {
+      setPin(pin.slice(0, -1));
+    }
+  };
+
+  const renderDots = () => {
+    const dots = [];
+    for (let i = 0; i < PIN_LENGTH; i++) {
+      dots.push(
+        <View
+          key={i}
+          style={[
+            styles.dot,
+            i < pin.length && styles.dotFilled,
+            error && styles.dotError,
+          ]}
+        />
+      );
+    }
+    return dots;
+  };
+
+  const renderNumberPad = () => {
+    const numbers = [
+      ['1', '2', '3'],
+      ['4', '5', '6'],
+      ['7', '8', '9'],
+      ['bio', '0', 'del'],
+    ];
+
+    return numbers.map((row, rowIndex) => (
+      <View key={rowIndex} style={styles.row}>
+        {row.map((num) => {
+          if (num === 'bio') {
+            if (isBiometricEnabled && isBiometricAvailable) {
+              return (
+                <TouchableOpacity
+                  key={num}
+                  style={styles.keyButton}
+                  onPress={handleBiometric}
+                >
+                  <Ionicons name="finger-print" size={28} color="#007AFF" />
+                </TouchableOpacity>
+              );
+            }
+            return <View key={num} style={styles.keyButton} />;
+          }
+          
+          if (num === 'del') {
+            return (
+              <TouchableOpacity
+                key={num}
+                style={styles.keyButton}
+                onPress={handleDelete}
+              >
+                <Ionicons name="backspace-outline" size={28} color="#333" />
+              </TouchableOpacity>
+            );
+          }
+          
+          return (
+            <TouchableOpacity
+              key={num}
+              style={styles.keyButton}
+              onPress={() => handleNumberPress(num)}
+            >
+              <Text style={styles.keyText}>{num}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    ));
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <View style={styles.iconContainer}>
+            <Ionicons name="lock-closed" size={40} color="#007AFF" />
+          </View>
+          <Text style={styles.title}>Введите PIN-код</Text>
+          {error ? (
+            <Text style={styles.error}>{error}</Text>
+          ) : (
+            <Text style={styles.subtitle}>Для доступа к SecureChat</Text>
+          )}
+        </View>
+        
+        <View style={styles.dotsContainer}>
+          {renderDots()}
+        </View>
+        
+        <View style={styles.numPad}>
+          {renderNumberPad()}
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingVertical: 40,
+  },
+  header: {
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#E8F4FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+  },
+  error: {
+    fontSize: 14,
+    color: '#FF3B30',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  dot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    backgroundColor: 'transparent',
+  },
+  dotFilled: {
+    backgroundColor: '#007AFF',
+  },
+  dotError: {
+    borderColor: '#FF3B30',
+    backgroundColor: '#FF3B30',
+  },
+  numPad: {
+    paddingHorizontal: 40,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+  keyButton: {
+    width: 75,
+    height: 75,
+    borderRadius: 40,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  keyText: {
+    fontSize: 28,
+    fontWeight: '500',
+    color: '#000',
+  },
+});
