@@ -4,7 +4,7 @@ import { User, Message } from '../types';
 
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
                 process.env.EXPO_PUBLIC_BACKEND_URL || 
-                'https://secure-messenger-149.preview.emergentagent.com';
+                'https://e2e-messenger-build.preview.emergentagent.com';
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,

@@ -11,7 +11,7 @@ from datetime import datetime
 import base64
 
 # Backend URL from environment
-BACKEND_URL = "https://secure-messenger-149.preview.emergentagent.com/api"
+BACKEND_URL = "https://e2e-messenger-build.preview.emergentagent.com/api"
 
 class SecureMessengerTester:
     def __init__(self):
