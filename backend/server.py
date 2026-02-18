@@ -636,11 +636,16 @@ async def root():
     return {"message": "Secure Messenger API", "status": "running"}
 
 @api_router.get("/health")
-async def health_check():
+async def api_health_check():
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
 # Include the router in the main app
 app.include_router(api_router)
+
+# Root-level health check for Kubernetes (REQUIRED for deployment)
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
 app.add_middleware(
     CORSMiddleware,
