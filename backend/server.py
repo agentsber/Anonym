@@ -248,6 +248,13 @@ async def send_message(message: MessageSend):
         raise HTTPException(status_code=404, detail="Receiver not found")
     
     message_id = str(uuid.uuid4())
+    
+    # Calculate expiration if auto-delete is set
+    expires_at = None
+    if message.auto_delete_seconds:
+        from datetime import timedelta
+        expires_at = datetime.utcnow() + timedelta(seconds=message.auto_delete_seconds)
+    
     message_doc = {
         "id": message_id,
         "sender_id": message.sender_id,
@@ -256,7 +263,12 @@ async def send_message(message: MessageSend):
         "ephemeral_key": message.ephemeral_key,
         "message_type": message.message_type,
         "status": "pending",
-        "timestamp": datetime.utcnow()
+        "timestamp": datetime.utcnow(),
+        "reply_to_id": message.reply_to_id,
+        "auto_delete_seconds": message.auto_delete_seconds,
+        "expires_at": expires_at,
+        "edited": False,
+        "deleted": False
     }
     
     await db.messages.insert_one(message_doc)
@@ -272,7 +284,10 @@ async def send_message(message: MessageSend):
                 "encrypted_content": message.encrypted_content,
                 "ephemeral_key": message.ephemeral_key,
                 "message_type": message.message_type,
-                "timestamp": message_doc["timestamp"].isoformat()
+                "timestamp": message_doc["timestamp"].isoformat(),
+                "reply_to_id": message.reply_to_id,
+                "auto_delete_seconds": message.auto_delete_seconds,
+                "expires_at": expires_at.isoformat() if expires_at else None
             }
         }
         await manager.send_personal_message(notification, message.receiver_id)
@@ -285,7 +300,10 @@ async def send_message(message: MessageSend):
         ephemeral_key=message.ephemeral_key,
         message_type=message.message_type,
         status="pending",
-        timestamp=message_doc["timestamp"]
+        timestamp=message_doc["timestamp"],
+        reply_to_id=message.reply_to_id,
+        auto_delete_seconds=message.auto_delete_seconds,
+        expires_at=expires_at
     )
 
 @api_router.get("/messages/pending/{user_id}", response_model=List[MessageResponse])
