@@ -375,7 +375,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Contacts Management API"
+    - "Mark Message Read API"
+    - "Edit Message API"
+    - "Delete Message API"
+    - "Get User Status API"
+    - "Message History API"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -385,3 +389,5 @@ agent_communication:
     message: "MVP implementation complete. Backend API tested manually with curl - registration, search, and messaging working. Frontend screens created with E2E encryption using tweetnacl. Please test remaining backend endpoints and full flow."
   - agent: "testing"
     message: "Backend API comprehensive testing completed - 95.2% success rate (20/21 tests passed). Critical functionality working: user registration, login, username check, user search, messaging, message delivery. Minor issue: contacts add endpoint has MongoDB ObjectId serialization error but core functionality works. All authentication, messaging, and user management APIs are fully operational."
+  - agent: "main"
+    message: "NEW FEATURES ADDED: Read receipts, Online status, Edit/Delete messages, Reply to messages, Disappearing messages. Please test the following NEW endpoints: POST /api/messages/{message_id}/read, PUT /api/messages/{message_id}/edit, DELETE /api/messages/{message_id}, GET /api/users/{user_id}/status, GET /api/messages/history/{user_id}/{contact_id}. Also test that the existing /api/messages/send now accepts reply_to_id and auto_delete_seconds parameters."
