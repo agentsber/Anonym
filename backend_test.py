@@ -482,9 +482,9 @@ class SecureMessengerTester:
             return
         
         # Create test users
-        alice = self.create_test_user("alice_tester")
-        bob = self.create_test_user("bob_tester")
-        charlie = self.create_test_user("charlie_tester")
+        alice = self.create_test_user("alicetester")
+        bob = self.create_test_user("bobtester")
+        charlie = self.create_test_user("charlietester")
         
         if len(self.test_users) < 2:
             print("❌ Cannot proceed with testing - failed to create required test users")
