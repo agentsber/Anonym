@@ -42,13 +42,21 @@ export default function RegisterScreen() {
   const [isUsernameAvailable, setIsUsernameAvailable] = useState<boolean | null>(null);
   
   const { register, login, isLoading, error, clearError } = useAuthStore();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const checkUsernameAvailability = useCallback(
-    debounce(async (name: string) => {
-      if (name.length < 3) {
-        setIsUsernameAvailable(null);
-        return;
-      }
+  const checkUsernameAvailability = useCallback(async (name: string) => {
+    if (name.length < 3) {
+      setIsUsernameAvailable(null);
+      return;
+    }
+    
+    // Clear previous timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
+    // Set new timeout for debounce
+    timeoutRef.current = setTimeout(async () => {
       setIsChecking(true);
       try {
         const available = await authApi.checkUsername(name);
@@ -58,9 +66,8 @@ export default function RegisterScreen() {
       } finally {
         setIsChecking(false);
       }
-    }, 500),
-    []
-  );
+    }, 500);
+  }, []);
 
   const handleUsernameChange = (text: string) => {
     const cleaned = text.toLowerCase().replace(/[^a-z0-9]/g, '');
