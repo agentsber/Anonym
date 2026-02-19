@@ -24,6 +24,25 @@ db = client[os.environ['DB_NAME']]
 # Create the main app
 app = FastAPI()
 
+# CORS middleware - must be added early
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Root-level health check for Kubernetes (REQUIRED for deployment)
+# Must be defined BEFORE any routers
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+
+@app.get("/")
+async def root():
+    return {"message": "Secure Messenger API", "status": "running"}
+
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
