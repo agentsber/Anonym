@@ -126,7 +126,8 @@ class MessageEdit(BaseModel):
     ephemeral_key: str
 
 class LoginRequest(BaseModel):
-    username: str
+    email: str
+    password: str
 
 # ==================== WebSocket Connection Manager ====================
 
