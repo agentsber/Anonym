@@ -254,6 +254,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     padding: 24,
+    paddingBottom: 32,
   },
   button: {
     backgroundColor: '#007AFF',
