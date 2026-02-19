@@ -23,6 +23,8 @@ const api = axios.create({
 export const authApi = {
   register: async (data: {
     username: string;
+    email: string;
+    password: string;
     public_key: string;
     identity_key: string;
     signed_prekey: string;
@@ -32,14 +34,23 @@ export const authApi = {
     return response.data;
   },
 
-  login: async (username: string): Promise<User> => {
-    const response = await api.post('/auth/login', { username });
+  login: async (email: string, password: string): Promise<User> => {
+    const response = await api.post('/auth/login', { email, password });
     return response.data;
   },
 
   checkUsername: async (username: string): Promise<boolean> => {
     const response = await api.get(`/auth/check-username/${username}`);
     return response.data.available;
+  },
+
+  checkEmail: async (email: string): Promise<boolean> => {
+    try {
+      const response = await api.get(`/auth/check-email/${email}`);
+      return response.data.available;
+    } catch {
+      return true; // Assume available if endpoint doesn't exist
+    }
   },
 };
 
