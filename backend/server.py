@@ -663,11 +663,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
     except WebSocketDisconnect:
         manager.disconnect(user_id)
 
-# ==================== Health Check ====================
-
-@api_router.get("/")
-async def root():
-    return {"message": "Secure Messenger API", "status": "running"}
+# ==================== API Health Check ====================
 
 @api_router.get("/health")
 async def api_health_check():
@@ -675,19 +671,6 @@ async def api_health_check():
 
 # Include the router in the main app
 app.include_router(api_router)
-
-# Root-level health check for Kubernetes (REQUIRED for deployment)
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
