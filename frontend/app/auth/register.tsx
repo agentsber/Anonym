@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,9 +13,24 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../src/stores/authStore';
 import { authApi } from '../../src/services/api';
 import debounce from 'lodash/debounce';
+
+const COLORS = {
+  background: '#0A0A0A',
+  surface: '#1A1A1A',
+  surfaceLight: '#252525',
+  primary: '#6C5CE7',
+  primaryLight: '#A29BFE',
+  success: '#00D9A5',
+  error: '#FF6B6B',
+  text: '#FFFFFF',
+  textSecondary: '#8E8E93',
+  textMuted: '#555555',
+  border: '#333333',
+};
 
 export default function RegisterScreen() {
   const [step, setStep] = useState<'register' | 'login'>('register');
@@ -29,7 +44,6 @@ export default function RegisterScreen() {
   
   const { register, login, isLoading, error, clearError } = useAuthStore();
 
-  // Debounced username check
   const checkUsernameAvailability = useCallback(
     debounce(async (name: string) => {
       if (name.length < 3) {
@@ -64,22 +78,10 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     clearError();
-    
-    if (!username || !email || !password || !confirmPassword) {
-      return;
-    }
-    
-    if (!validateEmail(email)) {
-      return;
-    }
-    
-    if (password !== confirmPassword) {
-      return;
-    }
-    
-    if (password.length < 6) {
-      return;
-    }
+    if (!username || !email || !password || !confirmPassword) return;
+    if (!validateEmail(email)) return;
+    if (password !== confirmPassword) return;
+    if (password.length < 6) return;
     
     try {
       await register(username, email, password);
@@ -91,10 +93,7 @@ export default function RegisterScreen() {
 
   const handleLogin = async () => {
     clearError();
-    
-    if (!email || !password) {
-      return;
-    }
+    if (!email || !password) return;
     
     try {
       await login(email, password);
@@ -106,13 +105,13 @@ export default function RegisterScreen() {
 
   const getUsernameStatusIcon = () => {
     if (isChecking) {
-      return <ActivityIndicator size="small" color="#007AFF" />;
+      return <ActivityIndicator size="small" color={COLORS.primary} />;
     }
     if (isUsernameAvailable === true) {
-      return <Ionicons name="checkmark-circle" size={24} color="#34C759" />;
+      return <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />;
     }
     if (isUsernameAvailable === false) {
-      return <Ionicons name="close-circle" size={24} color="#FF3B30" />;
+      return <Ionicons name="close-circle" size={22} color={COLORS.error} />;
     }
     return null;
   };
@@ -129,230 +128,279 @@ export default function RegisterScreen() {
 
   if (step === 'login') {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <View style={styles.container}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+          <KeyboardAvoidingView
+            style={styles.keyboardView}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.content}>
+                <View style={styles.logoContainer}>
+                  <LinearGradient
+                    colors={[COLORS.primary, COLORS.primaryLight]}
+                    style={styles.logoGradient}
+                  >
+                    <Ionicons name="chatbubbles" size={40} color="#FFF" />
+                  </LinearGradient>
+                </View>
+                
+                <Text style={styles.title}>С возвращением</Text>
+                <Text style={styles.description}>
+                  Войдите в свой аккаунт
+                </Text>
+                
+                <View style={styles.inputContainer}>
+                  <Ionicons name="mail-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Email"
+                    placeholderTextColor={COLORS.textMuted}
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="email-address"
+                  />
+                </View>
+                
+                <View style={styles.inputContainer}>
+                  <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Пароль"
+                    placeholderTextColor={COLORS.textMuted}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
+                    <Ionicons 
+                      name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                      size={20} 
+                      color={COLORS.textSecondary} 
+                    />
+                  </TouchableOpacity>
+                </View>
+                
+                {error && (
+                  <View style={styles.errorContainer}>
+                    <Ionicons name="alert-circle" size={16} color={COLORS.error} />
+                    <Text style={styles.error}>{error}</Text>
+                  </View>
+                )}
+              </View>
+            </ScrollView>
+            
+            <View style={styles.footer}>
+              <TouchableOpacity
+                style={[styles.button, !canLogin && styles.buttonDisabled]}
+                onPress={handleLogin}
+                disabled={!canLogin}
+              >
+                <LinearGradient
+                  colors={canLogin ? [COLORS.primary, COLORS.primaryLight] : [COLORS.surfaceLight, COLORS.surfaceLight]}
+                  style={styles.buttonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.buttonText}>Войти</Text>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+              
+              <TouchableOpacity onPress={() => { setStep('register'); clearError(); }}>
+                <Text style={styles.switchText}>
+                  Нет аккаунта? <Text style={styles.switchTextHighlight}>Регистрация</Text>
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
           style={styles.keyboardView}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <ScrollView contentContainerStyle={styles.scrollContent}>
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <View style={styles.content}>
-              <View style={styles.iconContainer}>
-                <Ionicons name="log-in" size={48} color="#007AFF" />
+              <View style={styles.logoContainer}>
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.primaryLight]}
+                  style={styles.logoGradient}
+                >
+                  <Ionicons name="shield-checkmark" size={40} color="#FFF" />
+                </LinearGradient>
               </View>
               
-              <Text style={styles.title}>Вход</Text>
+              <Text style={styles.title}>Anonym X</Text>
               <Text style={styles.description}>
-                Войдите с помощью email и пароля
+                Безопасный мессенджер с{'\n'}E2E шифрованием
               </Text>
               
+              {/* Username */}
               <View style={styles.inputContainer}>
-                <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+                <Ionicons name="at" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
                 <TextInput
-                  style={styles.inputWithIcon}
+                  style={styles.input}
+                  placeholder="Имя пользователя"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={username}
+                  onChangeText={handleUsernameChange}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  maxLength={30}
+                />
+                <View style={styles.statusIcon}>
+                  {getUsernameStatusIcon()}
+                </View>
+              </View>
+              
+              {username.length > 0 && username.length < 3 && (
+                <Text style={styles.hint}>Минимум 3 символа</Text>
+              )}
+              {isUsernameAvailable === false && (
+                <Text style={styles.errorHint}>Имя уже занято</Text>
+              )}
+              
+              {/* Email */}
+              <View style={styles.inputContainer}>
+                <Ionicons name="mail-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
                   placeholder="Email"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={COLORS.textMuted}
                   value={email}
                   onChangeText={setEmail}
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="email-address"
                 />
+                {email.length > 0 && (
+                  <Ionicons 
+                    name={validateEmail(email) ? "checkmark-circle" : "close-circle"} 
+                    size={22} 
+                    color={validateEmail(email) ? COLORS.success : COLORS.error} 
+                  />
+                )}
               </View>
               
+              {/* Password */}
               <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
                 <TextInput
-                  style={styles.inputWithIcon}
-                  placeholder="Пароль"
-                  placeholderTextColor="#999"
+                  style={styles.input}
+                  placeholder="Пароль (мин. 6 символов)"
+                  placeholderTextColor={COLORS.textMuted}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
                   <Ionicons 
                     name={showPassword ? "eye-off-outline" : "eye-outline"} 
                     size={20} 
-                    color="#666" 
+                    color={COLORS.textSecondary} 
                   />
                 </TouchableOpacity>
               </View>
               
-              {error && (
-                <Text style={styles.error}>{error}</Text>
+              {/* Confirm Password */}
+              <View style={styles.inputContainer}>
+                <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Подтвердите пароль"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showPassword}
+                />
+                {confirmPassword.length > 0 && (
+                  <Ionicons 
+                    name={password === confirmPassword ? "checkmark-circle" : "close-circle"} 
+                    size={22} 
+                    color={password === confirmPassword ? COLORS.success : COLORS.error} 
+                  />
+                )}
+              </View>
+              
+              {confirmPassword.length > 0 && password !== confirmPassword && (
+                <Text style={styles.errorHint}>Пароли не совпадают</Text>
               )}
+              
+              {error && (
+                <View style={styles.errorContainer}>
+                  <Ionicons name="alert-circle" size={16} color={COLORS.error} />
+                  <Text style={styles.error}>{error}</Text>
+                </View>
+              )}
+              
+              <View style={styles.featureList}>
+                <View style={styles.featureItem}>
+                  <Ionicons name="shield" size={18} color={COLORS.primary} />
+                  <Text style={styles.featureText}>E2E шифрование</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Ionicons name="eye-off" size={18} color={COLORS.primary} />
+                  <Text style={styles.featureText}>Приватность</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Ionicons name="key" size={18} color={COLORS.primary} />
+                  <Text style={styles.featureText}>Локальные ключи</Text>
+                </View>
+              </View>
             </View>
           </ScrollView>
           
           <View style={styles.footer}>
             <TouchableOpacity
-              style={[styles.button, !canLogin && styles.buttonDisabled]}
-              onPress={handleLogin}
-              disabled={!canLogin}
+              style={[styles.button, !canRegister && styles.buttonDisabled]}
+              onPress={handleRegister}
+              disabled={!canRegister}
             >
-              {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.buttonText}>Войти</Text>
-              )}
+              <LinearGradient
+                colors={canRegister ? [COLORS.primary, COLORS.primaryLight] : [COLORS.surfaceLight, COLORS.surfaceLight]}
+                style={styles.buttonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.buttonText}>Создать аккаунт</Text>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
             
-            <TouchableOpacity onPress={() => { setStep('register'); clearError(); }}>
-              <Text style={styles.switchText}>Нет аккаунта? Зарегистрируйтесь</Text>
+            <TouchableOpacity onPress={() => { setStep('login'); clearError(); }}>
+              <Text style={styles.switchText}>
+                Уже есть аккаунт? <Text style={styles.switchTextHighlight}>Войти</Text>
+              </Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.content}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="person-add" size={48} color="#007AFF" />
-            </View>
-            
-            <Text style={styles.title}>Регистрация</Text>
-            <Text style={styles.description}>
-              Создайте аккаунт для безопасного общения
-            </Text>
-            
-            {/* Username */}
-            <View style={styles.inputContainer}>
-              <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.inputWithIcon}
-                placeholder="Имя пользователя"
-                placeholderTextColor="#999"
-                value={username}
-                onChangeText={handleUsernameChange}
-                autoCapitalize="none"
-                autoCorrect={false}
-                maxLength={30}
-              />
-              <View style={styles.statusIcon}>
-                {getUsernameStatusIcon()}
-              </View>
-            </View>
-            
-            {username.length > 0 && username.length < 3 && (
-              <Text style={styles.hint}>Минимум 3 символа</Text>
-            )}
-            {isUsernameAvailable === false && (
-              <Text style={styles.errorHint}>Имя уже занято</Text>
-            )}
-            
-            {/* Email */}
-            <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.inputWithIcon}
-                placeholder="Email"
-                placeholderTextColor="#999"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-              />
-              {email.length > 0 && (
-                <Ionicons 
-                  name={validateEmail(email) ? "checkmark-circle" : "close-circle"} 
-                  size={24} 
-                  color={validateEmail(email) ? "#34C759" : "#FF3B30"} 
-                />
-              )}
-            </View>
-            
-            {/* Password */}
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.inputWithIcon}
-                placeholder="Пароль (мин. 6 символов)"
-                placeholderTextColor="#999"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons 
-                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                  size={20} 
-                  color="#666" 
-                />
-              </TouchableOpacity>
-            </View>
-            
-            {/* Confirm Password */}
-            <View style={styles.inputContainer}>
-              <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.inputWithIcon}
-                placeholder="Подтвердите пароль"
-                placeholderTextColor="#999"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry={!showPassword}
-              />
-              {confirmPassword.length > 0 && (
-                <Ionicons 
-                  name={password === confirmPassword ? "checkmark-circle" : "close-circle"} 
-                  size={24} 
-                  color={password === confirmPassword ? "#34C759" : "#FF3B30"} 
-                />
-              )}
-            </View>
-            
-            {confirmPassword.length > 0 && password !== confirmPassword && (
-              <Text style={styles.errorHint}>Пароли не совпадают</Text>
-            )}
-            
-            {error && (
-              <Text style={styles.error}>{error}</Text>
-            )}
-            
-            <View style={styles.keyInfo}>
-              <Ionicons name="key-outline" size={20} color="#666" />
-              <Text style={styles.keyInfoText}>
-                Ключи шифрования будут сгенерированы и сохранены на вашем устройстве.
-              </Text>
-            </View>
-          </View>
-        </ScrollView>
-        
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.button, !canRegister && styles.buttonDisabled]}
-            onPress={handleRegister}
-            disabled={!canRegister}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.buttonText}>Создать аккаунт</Text>
-            )}
-          </TouchableOpacity>
-          
-          <TouchableOpacity onPress={() => { setStep('login'); clearError(); }}>
-            <Text style={styles.switchText}>Уже есть аккаунт? Войти</Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.background,
+  },
+  safeArea: {
+    flex: 1,
   },
   keyboardView: {
     flex: 1,
@@ -363,48 +411,51 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 40,
+    paddingTop: 20,
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: '#F0F7FF',
-    justifyContent: 'center',
+  logoContainer: {
     alignItems: 'center',
-    alignSelf: 'center',
     marginBottom: 24,
   },
+  logoGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
-    color: '#1C1C1E',
+    color: COLORS.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   description: {
     fontSize: 16,
-    color: '#8E8E93',
+    color: COLORS.textSecondary,
     textAlign: 'center',
     marginBottom: 32,
-    lineHeight: 22,
+    lineHeight: 24,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
-    borderRadius: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
     paddingHorizontal: 16,
     marginBottom: 12,
-    height: 52,
+    height: 56,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   inputIcon: {
     marginRight: 12,
   },
-  inputWithIcon: {
+  input: {
     flex: 1,
-    fontSize: 17,
-    color: '#1C1C1E',
+    fontSize: 16,
+    color: COLORS.text,
   },
   statusIcon: {
     width: 24,
@@ -412,56 +463,64 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  eyeButton: {
+    padding: 4,
+  },
   hint: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: COLORS.textSecondary,
     marginTop: -8,
     marginBottom: 12,
-    marginLeft: 4,
+    marginLeft: 16,
   },
   errorHint: {
     fontSize: 13,
-    color: '#FF3B30',
+    color: COLORS.error,
     marginTop: -8,
     marginBottom: 12,
-    marginLeft: 4,
+    marginLeft: 16,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 12,
+    gap: 8,
   },
   error: {
     fontSize: 14,
-    color: '#FF3B30',
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 8,
+    color: COLORS.error,
   },
-  keyInfo: {
+  featureList: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F2F2F7',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
+    justifyContent: 'space-around',
+    marginTop: 24,
+    paddingHorizontal: 8,
   },
-  keyInfoText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#666',
-    marginLeft: 12,
-    lineHeight: 18,
+  featureItem: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  featureText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
   },
   footer: {
     padding: 24,
-    paddingBottom: 32,
+    paddingBottom: 16,
   },
   button: {
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
-    height: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: 16,
+    overflow: 'hidden',
     marginBottom: 16,
   },
   buttonDisabled: {
-    backgroundColor: '#B0B0B0',
+    opacity: 0.6,
+  },
+  buttonGradient: {
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   buttonText: {
     color: '#FFFFFF',
@@ -469,8 +528,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   switchText: {
-    color: '#007AFF',
-    fontSize: 16,
+    color: COLORS.textSecondary,
+    fontSize: 15,
     textAlign: 'center',
+  },
+  switchTextHighlight: {
+    color: COLORS.primary,
+    fontWeight: '600',
   },
 });
