@@ -498,23 +498,38 @@ async def add_contact(user_id: str, contact_id: str):
 
 @api_router.get("/contacts/{user_id}", response_model=List[UserPublicInfo])
 async def get_contacts(user_id: str):
-    """Get all contacts for a user"""
-    contacts = await db.contacts.find({"user_id": user_id}).to_list(1000)
+    """Get all contacts for a user - optimized with aggregation"""
+    # Use aggregation to avoid N+1 query pattern
+    pipeline = [
+        {"$match": {"user_id": user_id}},
+        {"$lookup": {
+            "from": "users",
+            "localField": "contact_id",
+            "foreignField": "id",
+            "as": "user_info"
+        }},
+        {"$unwind": "$user_info"},
+        {"$limit": 1000},
+        {"$project": {
+            "id": "$user_info.id",
+            "username": "$user_info.username",
+            "public_key": "$user_info.public_key",
+            "identity_key": "$user_info.identity_key",
+            "signed_prekey": "$user_info.signed_prekey",
+            "prekey_signature": "$user_info.prekey_signature"
+        }}
+    ]
     
-    contact_infos = []
-    for contact in contacts:
-        user = await db.users.find_one({"id": contact["contact_id"]})
-        if user:
-            contact_infos.append(UserPublicInfo(
-                id=user["id"],
-                username=user["username"],
-                public_key=user["public_key"],
-                identity_key=user["identity_key"],
-                signed_prekey=user["signed_prekey"],
-                prekey_signature=user["prekey_signature"]
-            ))
+    contacts = await db.contacts.aggregate(pipeline).to_list(1000)
     
-    return contact_infos
+    return [UserPublicInfo(
+        id=contact["id"],
+        username=contact["username"],
+        public_key=contact["public_key"],
+        identity_key=contact["identity_key"],
+        signed_prekey=contact["signed_prekey"],
+        prekey_signature=contact["prekey_signature"]
+    ) for contact in contacts]
 
 # ==================== Media Endpoints ====================
 
