@@ -2,16 +2,22 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 import { User, Message } from '../types';
 
-// Get API URL from environment (no hardcoded fallback for production compatibility)
+// Production backend URL - CHANGE THIS BEFORE BUILDING APK
+const PRODUCTION_BACKEND_URL = 'https://e2e-messenger-build.preview.emergentagent.com';
+
+// Get API URL from environment or use production URL
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
                 process.env.EXPO_PUBLIC_BACKEND_URL || 
-                '';
+                PRODUCTION_BACKEND_URL;
+
+console.log('API URL:', API_URL);
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000,
 });
 
 export const authApi = {
