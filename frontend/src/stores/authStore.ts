@@ -55,8 +55,8 @@ interface AuthState {
   error: string | null;
   
   initialize: () => Promise<void>;
-  register: (username: string) => Promise<void>;
-  login: (username: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
 }
