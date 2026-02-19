@@ -57,8 +57,25 @@ logger = logging.getLogger(__name__)
 
 # ==================== Models ====================
 
+# Password hashing helper functions
+def hash_password(password: str) -> str:
+    """Hash password with salt using SHA-256"""
+    salt = secrets.token_hex(16)
+    hashed = hashlib.sha256((password + salt).encode()).hexdigest()
+    return f"{salt}:{hashed}"
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    """Verify password against stored hash"""
+    try:
+        salt, hashed = stored_hash.split(':')
+        return hashlib.sha256((password + salt).encode()).hexdigest() == hashed
+    except:
+        return False
+
 class UserCreate(BaseModel):
     username: str
+    email: str  # Email for login
+    password: str  # Password for authentication
     public_key: str  # Base64 encoded public key
     identity_key: str  # Base64 encoded identity key for X3DH
     signed_prekey: str  # Base64 encoded signed prekey
@@ -67,6 +84,7 @@ class UserCreate(BaseModel):
 class UserResponse(BaseModel):
     id: str
     username: str
+    email: str
     public_key: str
     identity_key: str
     signed_prekey: str
