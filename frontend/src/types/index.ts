@@ -1,6 +1,7 @@
 export interface User {
   id: string;
   username: string;
+  email?: string;
   public_key: string;
   identity_key: string;
   signed_prekey: string;
