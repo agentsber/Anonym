@@ -255,19 +255,7 @@ async def login_user(request: LoginRequest):
     return UserResponse(
         id=user["id"],
         username=user["username"],
-        email=user["email"],
-        public_key=user["public_key"],
-        identity_key=user["identity_key"],
-        signed_prekey=user["signed_prekey"],
-        prekey_signature=user["prekey_signature"],
-        created_at=user["created_at"]
-    )
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    return UserResponse(
-        id=user["id"],
-        username=user["username"],
+        email=user.get("email", ""),
         public_key=user["public_key"],
         identity_key=user["identity_key"],
         signed_prekey=user["signed_prekey"],
