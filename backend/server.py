@@ -186,7 +186,12 @@ manager = ConnectionManager()
 
 @api_router.post("/auth/register", response_model=UserResponse)
 async def register_user(user: UserCreate):
-    """Register a new user with username and public keys"""
+    """Register a new user with email, password and public keys"""
+    # Check if email already exists
+    existing_email = await db.users.find_one({"email": user.email.lower()})
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
     # Check if username already exists
     existing_user = await db.users.find_one({"username": user.username.lower()})
     if existing_user:
@@ -199,10 +204,20 @@ async def register_user(user: UserCreate):
     if not user.username.isalnum():
         raise HTTPException(status_code=400, detail="Username must be alphanumeric")
     
+    # Validate password
+    if len(user.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    # Validate email format (basic check)
+    if '@' not in user.email or '.' not in user.email:
+        raise HTTPException(status_code=400, detail="Invalid email format")
+    
     user_id = str(uuid.uuid4())
     user_doc = {
         "id": user_id,
         "username": user.username.lower(),
+        "email": user.email.lower(),
+        "password_hash": hash_password(user.password),
         "public_key": user.public_key,
         "identity_key": user.identity_key,
         "signed_prekey": user.signed_prekey,
@@ -211,14 +226,42 @@ async def register_user(user: UserCreate):
     }
     
     await db.users.insert_one(user_doc)
-    logger.info(f"New user registered: {user.username}")
+    logger.info(f"New user registered: {user.username} ({user.email})")
     
-    return UserResponse(**user_doc)
+    return UserResponse(
+        id=user_doc["id"],
+        username=user_doc["username"],
+        email=user_doc["email"],
+        public_key=user_doc["public_key"],
+        identity_key=user_doc["identity_key"],
+        signed_prekey=user_doc["signed_prekey"],
+        prekey_signature=user_doc["prekey_signature"],
+        created_at=user_doc["created_at"]
+    )
 
 @api_router.post("/auth/login", response_model=UserResponse)
 async def login_user(request: LoginRequest):
-    """Login user by username - returns user info if exists"""
-    user = await db.users.find_one({"username": request.username.lower()})
+    """Login user by email and password"""
+    user = await db.users.find_one({"email": request.email.lower()})
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    if not verify_password(request.password, user.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    logger.info(f"User logged in: {user['username']}")
+    
+    return UserResponse(
+        id=user["id"],
+        username=user["username"],
+        email=user["email"],
+        public_key=user["public_key"],
+        identity_key=user["identity_key"],
+        signed_prekey=user["signed_prekey"],
+        prekey_signature=user["prekey_signature"],
+        created_at=user["created_at"]
+    )
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
