@@ -90,11 +90,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  register: async (username: string) => {
+  register: async (username: string, email: string, password: string) => {
     try {
       set({ isLoading: true, error: null });
       
-      console.log('Starting registration for:', username);
+      console.log('Starting registration for:', username, email);
       
       // Generate crypto keys
       const cryptoKeys = generateIdentityKeys();
@@ -105,6 +105,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Register with server
       const user = await authApi.register({
         username,
+        email,
+        password,
         public_key: exchangeKeyPair.publicKey,
         identity_key: cryptoKeys.identityKeyPair.publicKey,
         signed_prekey: cryptoKeys.signedPreKeyPair.publicKey,
@@ -149,11 +151,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  login: async (username: string) => {
+  login: async (email: string, password: string) => {
     try {
       set({ isLoading: true, error: null });
       
-      console.log('Starting login for:', username);
+      console.log('Starting login for:', email);
+      
+      // Login with server
+      const serverUser = await authApi.login(email, password);
+      console.log('Server login successful:', serverUser.id);
       
       // Check if we have local keys for this user
       const userJson = await AsyncStorage.getItem(STORAGE_KEYS.USER);
@@ -165,29 +171,42 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const localUser = JSON.parse(userJson);
         console.log('Local user:', localUser.username);
         
-        if (localUser.username.toLowerCase() === username.toLowerCase()) {
-          // Local keys exist, verify with server
-          console.log('Username matches, verifying with server...');
-          const serverUser = await authApi.login(username);
+        if (localUser.id === serverUser.id) {
+          // Local keys exist for this user
           const cryptoKeys = JSON.parse(keysJson);
           set({ user: { ...serverUser, exchangeSecretKey: localUser.exchangeSecretKey }, cryptoKeys });
-          console.log('Login successful');
+          console.log('Login successful with existing keys');
           return;
         }
       }
       
-      // No local keys - check if user exists on server
-      console.log('No local keys, checking server...');
-      try {
-        await authApi.login(username);
-        // User exists but no local keys
-        throw new Error('Ключи шифрования не найдены на этом устройстве. Зарегистрируйтесь заново.');
-      } catch (err: any) {
-        if (err.response?.status === 404) {
-          throw new Error('Пользователь не найден');
-        }
-        throw err;
-      }
+      // No local keys - generate new ones
+      console.log('No local keys, generating new ones...');
+      const cryptoKeys = generateIdentityKeys();
+      const exchangeKeyPair = generateKeyPair();
+      
+      const fullCryptoKeys: CryptoKeys = {
+        identityKeyPair: {
+          publicKey: cryptoKeys.identityKeyPair.publicKey,
+          secretKey: cryptoKeys.identityKeyPair.secretKey,
+        },
+        signedPreKeyPair: {
+          publicKey: cryptoKeys.signedPreKeyPair.publicKey,
+          secretKey: cryptoKeys.signedPreKeyPair.secretKey,
+        },
+        preKeySignature: cryptoKeys.preKeySignature,
+      };
+      
+      const userWithKeys = {
+        ...serverUser,
+        exchangeSecretKey: exchangeKeyPair.secretKey,
+      };
+      
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userWithKeys));
+      await secureStorage.setItem(STORAGE_KEYS.CRYPTO_KEYS, JSON.stringify(fullCryptoKeys));
+      
+      set({ user: userWithKeys, cryptoKeys: fullCryptoKeys });
+      console.log('Login successful with new keys');
     } catch (error: any) {
       console.error('Login error:', error);
       const errorMessage = error.response?.data?.detail || error.message || 'Ошибка входа';
