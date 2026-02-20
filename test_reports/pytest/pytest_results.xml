@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="29" skipped="0" tests="37" time="6.110" timestamp="2026-02-20T10:44:55.493491+00:00" hostname="agent-env-5ba38a88-8815-4d16-889a-09f7d9484b3d"><testcase classname="backend.tests.test_group_chat_api.TestHealthEndpoints" name="test_api_health" time="0.599" /><testcase classname="backend.tests.test_group_chat_api.TestHealthEndpoints" name="test_root_health" time="0.949"><failure message="assert 404 == 200&#10; +  where 404 = &lt;Response [404]&gt;.status_code">backend/tests/test_group_chat_api.py:64: in test_root_health
+    assert response.status_code == 200
+E   assert 404 == 200
+E    +  where 404 = &lt;Response [404]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestUserAuthentication" name="test_register_user1" time="0.484"><failure message="AssertionError: Registration failed: {&quot;detail&quot;:&quot;Username must be alphanumeric&quot;}&#10;assert 400 == 200&#10; +  where 400 = &lt;Response [400]&gt;.status_code">backend/tests/test_group_chat_api.py:76: in test_register_user1
+    assert response.status_code == 200, f"Registration failed: {response.text}"
+E   AssertionError: Registration failed: {"detail":"Username must be alphanumeric"}
+E   assert 400 == 200
+E    +  where 400 = &lt;Response [400]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestUserAuthentication" name="test_register_user2" time="0.374"><failure message="AssertionError: Registration failed: {&quot;detail&quot;:&quot;Username must be alphanumeric&quot;}&#10;assert 400 == 200&#10; +  where 400 = &lt;Response [400]&gt;.status_code">backend/tests/test_group_chat_api.py:92: in test_register_user2
+    assert response.status_code == 200, f"Registration failed: {response.text}"
+E   AssertionError: Registration failed: {"detail":"Username must be alphanumeric"}
+E   assert 400 == 200
+E    +  where 400 = &lt;Response [400]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestUserAuthentication" name="test_register_duplicate_email" time="0.360" /><testcase classname="backend.tests.test_group_chat_api.TestUserAuthentication" name="test_register_duplicate_username" time="0.381" /><testcase classname="backend.tests.test_group_chat_api.TestUserAuthentication" name="test_login_success" time="0.358"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_group_chat_api.py:122: in test_login_success
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestUserAuthentication" name="test_login_invalid_password" time="0.375" /><testcase classname="backend.tests.test_group_chat_api.TestUserAuthentication" name="test_login_nonexistent_user" time="0.372" /><testcase classname="backend.tests.test_group_chat_api.TestUserAuthentication" name="test_check_username_available" time="0.357" /><testcase classname="backend.tests.test_group_chat_api.TestUserAuthentication" name="test_check_username_taken" time="0.379"><failure message="assert True == False">backend/tests/test_group_chat_api.py:160: in test_check_username_taken
+    assert data["available"] == False
+E   assert True == False</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestUserEndpoints" name="test_get_user_by_id" time="0.000"><failure message="KeyError: 'id'">backend/tests/test_group_chat_api.py:169: in test_get_user_by_id
+    response = api_client.get(f"{BASE_URL}/api/users/{TEST_USER_1['id']}")
+                                                      ^^^^^^^^^^^^^^^^^
+E   KeyError: 'id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestUserEndpoints" name="test_get_user_not_found" time="0.361" /><testcase classname="backend.tests.test_group_chat_api.TestUserEndpoints" name="test_search_user" time="0.377" /><testcase classname="backend.tests.test_group_chat_api.TestUserEndpoints" name="test_get_user_status" time="0.000"><failure message="KeyError: 'id'">backend/tests/test_group_chat_api.py:195: in test_get_user_status
+    response = api_client.get(f"{BASE_URL}/api/users/{TEST_USER_1['id']}/status")
+                                                      ^^^^^^^^^^^^^^^^^
+E   KeyError: 'id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestContactsEndpoints" name="test_add_contact" time="0.000"><failure message="KeyError: 'id'">backend/tests/test_group_chat_api.py:211: in test_add_contact
+    params={"user_id": TEST_USER_1["id"], "contact_id": TEST_USER_2["id"]}
+                       ^^^^^^^^^^^^^^^^^
+E   KeyError: 'id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestContactsEndpoints" name="test_add_contact_duplicate" time="0.000"><failure message="KeyError: 'id'">backend/tests/test_group_chat_api.py:223: in test_add_contact_duplicate
+    params={"user_id": TEST_USER_1["id"], "contact_id": TEST_USER_2["id"]}
+                       ^^^^^^^^^^^^^^^^^
+E   KeyError: 'id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestContactsEndpoints" name="test_get_contacts" time="0.000"><failure message="KeyError: 'id'">backend/tests/test_group_chat_api.py:233: in test_get_contacts
+    response = api_client.get(f"{BASE_URL}/api/contacts/{TEST_USER_1['id']}")
+                                                         ^^^^^^^^^^^^^^^^^
+E   KeyError: 'id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestGroupEndpoints" name="test_create_group" time="0.000"><failure message="KeyError: 'id'">backend/tests/test_group_chat_api.py:251: in test_create_group
+    "creator_id": TEST_USER_1["id"],
+                  ^^^^^^^^^^^^^^^^^
+E   KeyError: 'id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestGroupEndpoints" name="test_get_user_groups" time="0.000"><failure message="KeyError: 'id'">backend/tests/test_group_chat_api.py:277: in test_get_user_groups
+    response = api_client.get(f"{BASE_URL}/api/groups/{TEST_USER_1['id']}")
+                                                       ^^^^^^^^^^^^^^^^^
+E   KeyError: 'id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestGroupEndpoints" name="test_get_group_info" time="0.000"><failure message="KeyError: 'group_id'">backend/tests/test_group_chat_api.py:294: in test_get_group_info
+    group_id = TEST_USER_1["group_id"]
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'group_id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestGroupEndpoints" name="test_update_group" time="0.000"><failure message="KeyError: 'group_id'">backend/tests/test_group_chat_api.py:307: in test_update_group
+    group_id = TEST_USER_1["group_id"]
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'group_id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestGroupEndpoints" name="test_update_group_unauthorized" time="0.000"><failure message="KeyError: 'group_id'">backend/tests/test_group_chat_api.py:325: in test_update_group_unauthorized
+    group_id = TEST_USER_1["group_id"]
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'group_id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestGroupMessagesEndpoints" name="test_send_group_message" time="0.000"><failure message="KeyError: 'group_id'">backend/tests/test_group_chat_api.py:341: in test_send_group_message
+    group_id = TEST_USER_1["group_id"]
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'group_id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestGroupMessagesEndpoints" name="test_send_group_message_by_member" time="0.000"><failure message="KeyError: 'group_id'">backend/tests/test_group_chat_api.py:365: in test_send_group_message_by_member
+    group_id = TEST_USER_1["group_id"]
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'group_id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestGroupMessagesEndpoints" name="test_get_group_messages" time="0.000"><failure message="KeyError: 'group_id'">backend/tests/test_group_chat_api.py:382: in test_get_group_messages
+    group_id = TEST_USER_1["group_id"]
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'group_id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestGroupMessagesEndpoints" name="test_send_message_non_member" time="0.000"><failure message="KeyError: 'group_id'">backend/tests/test_group_chat_api.py:401: in test_send_message_non_member
+    group_id = TEST_USER_1["group_id"]
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'group_id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestGroupMembershipEndpoints" name="test_add_member_to_group" time="0.000"><failure message="KeyError: 'group_id'">backend/tests/test_group_chat_api.py:437: in test_add_member_to_group
+    group_id = TEST_USER_1["group_id"]
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'group_id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestGroupMembershipEndpoints" name="test_add_member_duplicate" time="0.000"><failure message="KeyError: 'group_id'">backend/tests/test_group_chat_api.py:470: in test_add_member_duplicate
+    group_id = TEST_USER_1["group_id"]
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'group_id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestGroupMembershipEndpoints" name="test_add_member_unauthorized" time="0.000"><failure message="KeyError: 'group_id'">backend/tests/test_group_chat_api.py:481: in test_add_member_unauthorized
+    group_id = TEST_USER_1["group_id"]
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'group_id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestGroupMembershipEndpoints" name="test_remove_member_from_group" time="0.000"><failure message="KeyError: 'group_id'">backend/tests/test_group_chat_api.py:494: in test_remove_member_from_group
+    group_id = TEST_USER_1["group_id"]
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'group_id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestGroupMembershipEndpoints" name="test_member_self_leave" time="0.000"><failure message="KeyError: 'group_id'">backend/tests/test_group_chat_api.py:512: in test_member_self_leave
+    group_id = TEST_USER_1["group_id"]
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'group_id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestDirectMessageEndpoints" name="test_send_direct_message" time="0.000"><failure message="KeyError: 'id'">backend/tests/test_group_chat_api.py:535: in test_send_direct_message
+    "sender_id": TEST_USER_1["id"],
+                 ^^^^^^^^^^^^^^^^^
+E   KeyError: 'id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestDirectMessageEndpoints" name="test_get_pending_messages" time="0.000"><failure message="KeyError: 'id'">backend/tests/test_group_chat_api.py:556: in test_get_pending_messages
+    response = api_client.get(f"{BASE_URL}/api/messages/pending/{TEST_USER_2['id']}")
+                                                                 ^^^^^^^^^^^^^^^^^
+E   KeyError: 'id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestDirectMessageEndpoints" name="test_get_message_history" time="0.000"><failure message="KeyError: 'id'">backend/tests/test_group_chat_api.py:567: in test_get_message_history
+    f"{BASE_URL}/api/messages/history/{TEST_USER_1['id']}/{TEST_USER_2['id']}"
+                                       ^^^^^^^^^^^^^^^^^
+E   KeyError: 'id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestGroupDeletion" name="test_delete_group_unauthorized" time="0.000"><failure message="KeyError: 'group_id'">backend/tests/test_group_chat_api.py:581: in test_delete_group_unauthorized
+    group_id = TEST_USER_1["group_id"]
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'group_id'</failure></testcase><testcase classname="backend.tests.test_group_chat_api.TestGroupDeletion" name="test_delete_group" time="0.000"><failure message="KeyError: 'group_id'">backend/tests/test_group_chat_api.py:592: in test_delete_group
+    group_id = TEST_USER_1["group_id"]
+               ^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'group_id'</failure></testcase></testsuite></testsuites>
