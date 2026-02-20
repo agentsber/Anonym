@@ -567,13 +567,13 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.background,
   },
   keyboardView: {
     flex: 1,
@@ -584,15 +584,15 @@ const styles = StyleSheet.create({
   headerName: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#000',
+    color: COLORS.text,
   },
   onlineText: {
     fontSize: 12,
-    color: '#34C759',
+    color: COLORS.success,
   },
   lastSeenText: {
     fontSize: 12,
-    color: '#8E8E93',
+    color: COLORS.textSecondary,
   },
   headerRight: {
     flexDirection: 'row',
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#E8F4FF',
+    backgroundColor: COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -623,12 +623,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: COLORS.text,
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 15,
-    color: '#8E8E93',
+    color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -641,9 +641,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#F5F5F5',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E0E0E0',
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
   },
   replyPreviewContent: {
     flexDirection: 'row',
@@ -657,19 +657,19 @@ const styles = StyleSheet.create({
   replyPreviewLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#007AFF',
+    color: COLORS.primary,
   },
   replyPreviewMessage: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.textSecondary,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E0E0E0',
-    backgroundColor: '#F8F8F8',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   attachButton: {
     marginRight: 8,
@@ -677,17 +677,15 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surfaceLight,
     borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E0E0E0',
     paddingHorizontal: 16,
     paddingVertical: 8,
     maxHeight: 120,
   },
   input: {
     fontSize: 16,
-    color: '#000',
+    color: COLORS.text,
     maxHeight: 100,
   },
   sendButton: {
@@ -695,20 +693,20 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#007AFF',
+    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: '#B0D4FF',
+    backgroundColor: COLORS.surfaceLight,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'flex-end',
   },
   timerMenu: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingTop: 20,
@@ -718,12 +716,12 @@ const styles = StyleSheet.create({
   timerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: COLORS.text,
     textAlign: 'center',
   },
   timerSubtitle: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: COLORS.textSecondary,
     textAlign: 'center',
     marginTop: 4,
     marginBottom: 20,
@@ -738,18 +736,18 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   timerOptionSelected: {
-    backgroundColor: '#E8F4FF',
+    backgroundColor: COLORS.surfaceLight,
   },
   timerOptionText: {
     fontSize: 16,
-    color: '#000',
+    color: COLORS.text,
   },
   timerOptionTextSelected: {
-    color: '#007AFF',
+    color: COLORS.primary,
     fontWeight: '500',
   },
   attachmentSheet: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingTop: 12,
@@ -759,7 +757,7 @@ const styles = StyleSheet.create({
   sheetHandle: {
     width: 40,
     height: 4,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: COLORS.border,
     borderRadius: 2,
     alignSelf: 'center',
     marginBottom: 16,
@@ -767,7 +765,7 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#000',
+    color: COLORS.text,
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -789,18 +787,18 @@ const styles = StyleSheet.create({
   },
   attachLabel: {
     fontSize: 13,
-    color: '#666',
+    color: COLORS.textSecondary,
   },
   cancelButton: {
     marginTop: 20,
     paddingVertical: 16,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLORS.surfaceLight,
     borderRadius: 12,
     alignItems: 'center',
   },
   cancelText: {
     fontSize: 17,
-    color: '#007AFF',
+    color: COLORS.primary,
     fontWeight: '500',
   },
   imagePreviewContainer: {
