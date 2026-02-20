@@ -25,6 +25,19 @@ import { ChatBubble } from '../../src/components/ChatBubble';
 import { Message, User, AUTO_DELETE_OPTIONS } from '../../src/types';
 import { encryptMessage } from '../../src/services/crypto';
 
+const COLORS = {
+  background: '#0A0A0A',
+  surface: '#1A1A1A',
+  surfaceLight: '#252525',
+  primary: '#6C5CE7',
+  primaryLight: '#A29BFE',
+  success: '#00D9A5',
+  error: '#FF6B6B',
+  text: '#FFFFFF',
+  textSecondary: '#8E8E93',
+  border: '#333333',
+};
+
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function ChatScreen() {
