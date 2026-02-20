@@ -149,7 +149,11 @@ export default function GroupChatScreen() {
           headerStyle: { backgroundColor: COLORS.background },
           headerTintColor: COLORS.text,
           headerTitle: () => (
-            <TouchableOpacity style={styles.headerTitle} onPress={() => {}}>
+            <TouchableOpacity 
+              style={styles.headerTitle} 
+              onPress={() => router.push(`/group/manage/${groupId}`)}
+              data-testid="group-header-title"
+            >
               <Text style={styles.headerName} numberOfLines={1}>{group?.name}</Text>
               <Text style={styles.headerSubtitle}>
                 {group?.members?.length || 0} участников
@@ -157,7 +161,11 @@ export default function GroupChatScreen() {
             </TouchableOpacity>
           ),
           headerRight: () => (
-            <TouchableOpacity style={styles.headerButton}>
+            <TouchableOpacity 
+              style={styles.headerButton}
+              onPress={() => router.push(`/group/manage/${groupId}`)}
+              data-testid="group-settings-btn"
+            >
               <Ionicons name="ellipsis-vertical" size={22} color={COLORS.text} />
             </TouchableOpacity>
           ),
