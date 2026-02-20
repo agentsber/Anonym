@@ -742,6 +742,10 @@ async def mark_media_delivered(media_id: str):
 @api_router.post("/groups", response_model=GroupResponse)
 async def create_group(group: GroupCreate):
     """Create a new group chat"""
+    # Verify at least one member is being added (besides creator)
+    if not group.member_ids or len(group.member_ids) == 0:
+        raise HTTPException(status_code=400, detail="Добавьте хотя бы одного участника в группу")
+    
     # Verify creator exists
     creator = await db.users.find_one({"id": group.creator_id})
     if not creator:
