@@ -15,9 +15,9 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuthStore } from '../../../src/stores/authStore';
-import { groupsApi, contactsApi } from '../../../src/services/api';
-import { Group, GroupMember, User } from '../../../src/types';
+import { useAuthStore } from '../src/stores/authStore';
+import { groupsApi, contactsApi } from '../src/services/api';
+import { Group, GroupMember, User } from '../src/types';
 
 const COLORS = {
   background: '#0A0A0A',
