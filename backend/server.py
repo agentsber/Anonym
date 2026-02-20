@@ -737,6 +737,332 @@ async def mark_media_delivered(media_id: str):
     logger.info(f"Media {media_id} delivered and deleted from server")
     return {"status": "delivered", "media_id": media_id}
 
+# ==================== Group Endpoints ====================
+
+@api_router.post("/groups", response_model=GroupResponse)
+async def create_group(group: GroupCreate):
+    """Create a new group chat"""
+    # Verify creator exists
+    creator = await db.users.find_one({"id": group.creator_id})
+    if not creator:
+        raise HTTPException(status_code=404, detail="Creator not found")
+    
+    # Generate group ID and avatar color
+    group_id = str(uuid.uuid4())
+    colors = ['#6C5CE7', '#00D9A5', '#FF6B6B', '#FDA7DF', '#1289A7', '#F79F1F']
+    avatar_color = group.avatar_color or colors[len(group.name) % len(colors)]
+    
+    # Create group document
+    group_doc = {
+        "id": group_id,
+        "name": group.name,
+        "creator_id": group.creator_id,
+        "avatar_color": avatar_color,
+        "created_at": datetime.utcnow()
+    }
+    
+    await db.groups.insert_one(group_doc)
+    
+    # Add creator as admin member
+    await db.group_members.insert_one({
+        "group_id": group_id,
+        "user_id": group.creator_id,
+        "role": "admin",
+        "joined_at": datetime.utcnow()
+    })
+    
+    # Add other members
+    for member_id in group.member_ids:
+        if member_id != group.creator_id:
+            user = await db.users.find_one({"id": member_id})
+            if user:
+                await db.group_members.insert_one({
+                    "group_id": group_id,
+                    "user_id": member_id,
+                    "role": "member",
+                    "joined_at": datetime.utcnow()
+                })
+    
+    # Get members list
+    members = await get_group_members(group_id)
+    
+    logger.info(f"Group created: {group.name} by {creator['username']}")
+    
+    return GroupResponse(
+        id=group_id,
+        name=group.name,
+        creator_id=group.creator_id,
+        avatar_color=avatar_color,
+        created_at=group_doc["created_at"],
+        members=members
+    )
+
+async def get_group_members(group_id: str) -> List[dict]:
+    """Get list of group members with user info"""
+    pipeline = [
+        {"$match": {"group_id": group_id}},
+        {"$lookup": {
+            "from": "users",
+            "localField": "user_id",
+            "foreignField": "id",
+            "as": "user_info"
+        }},
+        {"$unwind": "$user_info"},
+        {"$project": {
+            "user_id": 1,
+            "username": "$user_info.username",
+            "role": 1,
+            "joined_at": 1
+        }}
+    ]
+    members = await db.group_members.aggregate(pipeline).to_list(1000)
+    return members
+
+@api_router.get("/groups/{user_id}")
+async def get_user_groups(user_id: str):
+    """Get all groups for a user"""
+    # Get group IDs user is member of
+    memberships = await db.group_members.find({"user_id": user_id}).to_list(1000)
+    group_ids = [m["group_id"] for m in memberships]
+    
+    groups = []
+    for group_id in group_ids:
+        group = await db.groups.find_one({"id": group_id})
+        if group:
+            members = await get_group_members(group_id)
+            
+            # Get last message
+            last_message = await db.group_messages.find_one(
+                {"group_id": group_id},
+                sort=[("timestamp", -1)]
+            )
+            
+            groups.append({
+                "id": group["id"],
+                "name": group["name"],
+                "creator_id": group["creator_id"],
+                "avatar_color": group["avatar_color"],
+                "created_at": group["created_at"].isoformat(),
+                "members": members,
+                "member_count": len(members),
+                "last_message": {
+                    "content": last_message["content"] if last_message else None,
+                    "sender_username": last_message.get("sender_username") if last_message else None,
+                    "timestamp": last_message["timestamp"].isoformat() if last_message else None
+                } if last_message else None
+            })
+    
+    return groups
+
+@api_router.get("/groups/{group_id}/info")
+async def get_group_info(group_id: str):
+    """Get group info by ID"""
+    group = await db.groups.find_one({"id": group_id})
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    members = await get_group_members(group_id)
+    
+    return {
+        "id": group["id"],
+        "name": group["name"],
+        "creator_id": group["creator_id"],
+        "avatar_color": group["avatar_color"],
+        "created_at": group["created_at"].isoformat(),
+        "members": members
+    }
+
+@api_router.put("/groups/{group_id}")
+async def update_group(group_id: str, update: GroupUpdate, user_id: str):
+    """Update group info (admin only)"""
+    # Check if user is admin
+    membership = await db.group_members.find_one({
+        "group_id": group_id,
+        "user_id": user_id,
+        "role": "admin"
+    })
+    
+    if not membership:
+        raise HTTPException(status_code=403, detail="Only admins can update group")
+    
+    update_data = {}
+    if update.name:
+        update_data["name"] = update.name
+    if update.avatar_color:
+        update_data["avatar_color"] = update.avatar_color
+    
+    if update_data:
+        await db.groups.update_one({"id": group_id}, {"$set": update_data})
+    
+    return {"status": "updated"}
+
+@api_router.post("/groups/{group_id}/members/{member_id}")
+async def add_group_member(group_id: str, member_id: str, admin_id: str):
+    """Add member to group (admin only)"""
+    # Check if requester is admin
+    admin_membership = await db.group_members.find_one({
+        "group_id": group_id,
+        "user_id": admin_id,
+        "role": "admin"
+    })
+    
+    if not admin_membership:
+        raise HTTPException(status_code=403, detail="Only admins can add members")
+    
+    # Check if user exists
+    user = await db.users.find_one({"id": member_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if already member
+    existing = await db.group_members.find_one({
+        "group_id": group_id,
+        "user_id": member_id
+    })
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="User already in group")
+    
+    # Add member
+    await db.group_members.insert_one({
+        "group_id": group_id,
+        "user_id": member_id,
+        "role": "member",
+        "joined_at": datetime.utcnow()
+    })
+    
+    logger.info(f"User {user['username']} added to group {group_id}")
+    return {"status": "added", "username": user["username"]}
+
+@api_router.delete("/groups/{group_id}/members/{member_id}")
+async def remove_group_member(group_id: str, member_id: str, admin_id: str):
+    """Remove member from group (admin only, or self-leave)"""
+    # Self-leave is allowed
+    if member_id != admin_id:
+        # Check if requester is admin
+        admin_membership = await db.group_members.find_one({
+            "group_id": group_id,
+            "user_id": admin_id,
+            "role": "admin"
+        })
+        
+        if not admin_membership:
+            raise HTTPException(status_code=403, detail="Only admins can remove members")
+    
+    # Can't remove the creator
+    group = await db.groups.find_one({"id": group_id})
+    if group and group["creator_id"] == member_id and member_id != admin_id:
+        raise HTTPException(status_code=400, detail="Cannot remove group creator")
+    
+    result = await db.group_members.delete_one({
+        "group_id": group_id,
+        "user_id": member_id
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Member not found in group")
+    
+    return {"status": "removed"}
+
+@api_router.post("/groups/{group_id}/messages")
+async def send_group_message(group_id: str, message: GroupMessageSend):
+    """Send message to group"""
+    # Verify sender is member
+    membership = await db.group_members.find_one({
+        "group_id": group_id,
+        "user_id": message.sender_id
+    })
+    
+    if not membership:
+        raise HTTPException(status_code=403, detail="You are not a member of this group")
+    
+    # Get sender info
+    sender = await db.users.find_one({"id": message.sender_id})
+    if not sender:
+        raise HTTPException(status_code=404, detail="Sender not found")
+    
+    message_id = str(uuid.uuid4())
+    message_doc = {
+        "id": message_id,
+        "group_id": group_id,
+        "sender_id": message.sender_id,
+        "sender_username": sender["username"],
+        "content": message.content,
+        "message_type": message.message_type,
+        "timestamp": datetime.utcnow(),
+        "reply_to_id": message.reply_to_id
+    }
+    
+    await db.group_messages.insert_one(message_doc)
+    
+    # Notify all group members via WebSocket
+    members = await db.group_members.find({"group_id": group_id}).to_list(1000)
+    for member in members:
+        if member["user_id"] != message.sender_id:
+            await manager.send_message(member["user_id"], {
+                "type": "group_message",
+                "group_id": group_id,
+                "message": {
+                    "id": message_id,
+                    "sender_id": message.sender_id,
+                    "sender_username": sender["username"],
+                    "content": message.content,
+                    "message_type": message.message_type,
+                    "timestamp": message_doc["timestamp"].isoformat(),
+                    "reply_to_id": message.reply_to_id
+                }
+            })
+    
+    return GroupMessageResponse(
+        id=message_id,
+        group_id=group_id,
+        sender_id=message.sender_id,
+        sender_username=sender["username"],
+        content=message.content,
+        message_type=message.message_type,
+        timestamp=message_doc["timestamp"],
+        reply_to_id=message.reply_to_id
+    )
+
+@api_router.get("/groups/{group_id}/messages")
+async def get_group_messages(group_id: str, limit: int = 50, before: Optional[str] = None):
+    """Get messages from a group"""
+    query = {"group_id": group_id}
+    
+    if before:
+        query["timestamp"] = {"$lt": datetime.fromisoformat(before)}
+    
+    messages = await db.group_messages.find(query).sort("timestamp", -1).limit(limit).to_list(limit)
+    
+    return [{
+        "id": m["id"],
+        "group_id": m["group_id"],
+        "sender_id": m["sender_id"],
+        "sender_username": m.get("sender_username", "Unknown"),
+        "content": m["content"],
+        "message_type": m["message_type"],
+        "timestamp": m["timestamp"].isoformat(),
+        "reply_to_id": m.get("reply_to_id")
+    } for m in reversed(messages)]
+
+@api_router.delete("/groups/{group_id}")
+async def delete_group(group_id: str, user_id: str):
+    """Delete group (creator only)"""
+    group = await db.groups.find_one({"id": group_id})
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    if group["creator_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Only creator can delete group")
+    
+    # Delete all related data
+    await db.group_messages.delete_many({"group_id": group_id})
+    await db.group_members.delete_many({"group_id": group_id})
+    await db.groups.delete_one({"id": group_id})
+    
+    logger.info(f"Group {group_id} deleted")
+    return {"status": "deleted"}
+
 # ==================== WebSocket Endpoint ====================
 
 @app.websocket("/ws/{user_id}")
