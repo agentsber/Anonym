@@ -118,6 +118,43 @@ class MessageResponse(BaseModel):
     status: str  # pending, delivered, read
     timestamp: datetime
     reply_to_id: Optional[str] = None
+
+# ==================== Group Models ====================
+
+class GroupCreate(BaseModel):
+    name: str
+    creator_id: str
+    member_ids: List[str]  # List of user IDs to add to group
+    avatar_color: Optional[str] = None
+
+class GroupResponse(BaseModel):
+    id: str
+    name: str
+    creator_id: str
+    avatar_color: str
+    created_at: datetime
+    members: List[dict]
+
+class GroupUpdate(BaseModel):
+    name: Optional[str] = None
+    avatar_color: Optional[str] = None
+
+class GroupMessageSend(BaseModel):
+    group_id: str
+    sender_id: str
+    content: str  # Plain text for groups (simplified)
+    message_type: str = "text"
+    reply_to_id: Optional[str] = None
+
+class GroupMessageResponse(BaseModel):
+    id: str
+    group_id: str
+    sender_id: str
+    sender_username: str
+    content: str
+    message_type: str
+    timestamp: datetime
+    reply_to_id: Optional[str] = None
     auto_delete_seconds: Optional[int] = None
     expires_at: Optional[datetime] = None
 
