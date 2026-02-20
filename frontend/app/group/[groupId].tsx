@@ -151,7 +151,7 @@ export default function GroupChatScreen() {
           headerTitle: () => (
             <TouchableOpacity 
               style={styles.headerTitle} 
-              onPress={() => router.push(`/group/manage/${groupId}`)}
+              onPress={() => router.push(`/group-manage/${groupId}`)}
               data-testid="group-header-title"
             >
               <Text style={styles.headerName} numberOfLines={1}>{group?.name}</Text>
@@ -163,7 +163,7 @@ export default function GroupChatScreen() {
           headerRight: () => (
             <TouchableOpacity 
               style={styles.headerButton}
-              onPress={() => router.push(`/group/manage/${groupId}`)}
+              onPress={() => router.push(`/group-manage/${groupId}`)}
               data-testid="group-settings-btn"
             >
               <Ionicons name="ellipsis-vertical" size={22} color={COLORS.text} />
