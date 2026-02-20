@@ -64,7 +64,15 @@ export default function CreateGroupScreen() {
   };
 
   const handleCreateGroup = async () => {
-    if (!user || !groupName.trim() || selectedMembers.length === 0) return;
+    if (!user || !groupName.trim()) {
+      Alert.alert('Ошибка', 'Введите название группы');
+      return;
+    }
+    
+    if (selectedMembers.length === 0) {
+      Alert.alert('Ошибка', 'Добавьте хотя бы одного участника в группу');
+      return;
+    }
     
     setIsCreating(true);
     try {
@@ -75,8 +83,9 @@ export default function CreateGroupScreen() {
       });
       
       router.replace(`/group/${group.id}`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating group:', err);
+      Alert.alert('Ошибка', err.response?.data?.detail || 'Не удалось создать группу');
     } finally {
       setIsCreating(false);
     }
