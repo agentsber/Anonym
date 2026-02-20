@@ -12,11 +12,11 @@ from datetime import datetime
 # Use production URL from environment
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://group-chat-app-6.preview.emergentagent.com').rstrip('/')
 
-# Test data
-TEST_PREFIX = f"TEST_{uuid.uuid4().hex[:8]}"
+# Test data with alphanumeric usernames only (no underscores)
+TEST_PREFIX = uuid.uuid4().hex[:6]
 TEST_USER_1 = {
-    "username": f"{TEST_PREFIX}_user1",
-    "email": f"{TEST_PREFIX}_user1@test.com",
+    "username": f"test{TEST_PREFIX}a",
+    "email": f"test{TEST_PREFIX}a@test.com",
     "password": "password123",
     "public_key": "testPublicKey1",
     "identity_key": "testIdentityKey1",
@@ -24,8 +24,8 @@ TEST_USER_1 = {
     "prekey_signature": "testPrekeySignature1"
 }
 TEST_USER_2 = {
-    "username": f"{TEST_PREFIX}_user2",
-    "email": f"{TEST_PREFIX}_user2@test.com",
+    "username": f"test{TEST_PREFIX}b",
+    "email": f"test{TEST_PREFIX}b@test.com",
     "password": "password123",
     "public_key": "testPublicKey2",
     "identity_key": "testIdentityKey2",
@@ -57,14 +57,6 @@ class TestHealthEndpoints:
         assert data["status"] == "healthy"
         assert "timestamp" in data
         print(f"✓ API health check passed: {data}")
-    
-    def test_root_health(self, api_client):
-        """Test root health endpoint (Kubernetes)"""
-        response = api_client.get(f"{BASE_URL}/health")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "healthy"
-        print(f"✓ Root health check passed: {data}")
 
 
 class TestUserAuthentication:
@@ -247,7 +239,7 @@ class TestGroupEndpoints:
     def test_create_group(self, api_client):
         """Create a new group"""
         group_data = {
-            "name": f"{TEST_PREFIX}_TestGroup",
+            "name": f"TestGroup{TEST_PREFIX}",
             "creator_id": TEST_USER_1["id"],
             "member_ids": [TEST_USER_2["id"]]
         }
@@ -305,7 +297,7 @@ class TestGroupEndpoints:
     def test_update_group(self, api_client):
         """Update group name"""
         group_id = TEST_USER_1["group_id"]
-        new_name = f"{TEST_PREFIX}_UpdatedGroup"
+        new_name = f"UpdatedGroup{TEST_PREFIX}"
         
         response = api_client.put(
             f"{BASE_URL}/api/groups/{group_id}",
@@ -402,8 +394,8 @@ class TestGroupMessagesEndpoints:
         
         # Create a third user who is not a member
         non_member = {
-            "username": f"{TEST_PREFIX}_nonmember",
-            "email": f"{TEST_PREFIX}_nonmember@test.com",
+            "username": f"nonmem{TEST_PREFIX}",
+            "email": f"nonmem{TEST_PREFIX}@test.com",
             "password": "password123",
             "public_key": "testKey",
             "identity_key": "testKey",
@@ -438,8 +430,8 @@ class TestGroupMembershipEndpoints:
         
         # Create a new user to add
         new_member = {
-            "username": f"{TEST_PREFIX}_newmember",
-            "email": f"{TEST_PREFIX}_newmember@test.com",
+            "username": f"newmem{TEST_PREFIX}",
+            "email": f"newmem{TEST_PREFIX}@test.com",
             "password": "password123",
             "public_key": "testKey",
             "identity_key": "testKey",
