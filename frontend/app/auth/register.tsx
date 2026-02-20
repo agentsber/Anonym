@@ -91,7 +91,7 @@ export default function RegisterScreen() {
     
     try {
       await register(username, email, password);
-      router.replace('/(app)');
+      router.replace('/(tabs)');
     } catch (err) {
       console.error('Registration failed:', err);
     }
@@ -103,7 +103,7 @@ export default function RegisterScreen() {
     
     try {
       await login(email, password);
-      router.replace('/(app)');
+      router.replace('/(tabs)');
     } catch (err) {
       console.error('Login failed:', err);
     }
