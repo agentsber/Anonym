@@ -999,7 +999,7 @@ async def send_group_message(group_id: str, message: GroupMessageSend):
     members = await db.group_members.find({"group_id": group_id}).to_list(1000)
     for member in members:
         if member["user_id"] != message.sender_id:
-            await manager.send_message(member["user_id"], {
+            await manager.send_personal_message({
                 "type": "group_message",
                 "group_id": group_id,
                 "message": {
@@ -1011,7 +1011,7 @@ async def send_group_message(group_id: str, message: GroupMessageSend):
                     "timestamp": message_doc["timestamp"].isoformat(),
                     "reply_to_id": message.reply_to_id
                 }
-            })
+            }, member["user_id"])
     
     return GroupMessageResponse(
         id=message_id,
