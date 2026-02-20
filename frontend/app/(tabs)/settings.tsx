@@ -11,8 +11,23 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useSecurityStore } from '../../src/stores/securityStore';
+
+const COLORS = {
+  background: '#0A0A0A',
+  surface: '#1A1A1A',
+  surfaceLight: '#252525',
+  primary: '#6C5CE7',
+  primaryLight: '#A29BFE',
+  success: '#00D9A5',
+  warning: '#FF9F43',
+  error: '#FF6B6B',
+  text: '#FFFFFF',
+  textSecondary: '#8E8E93',
+  border: '#333333',
+};
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -95,119 +110,171 @@ export default function SettingsScreen() {
     await enableBiometric(value);
   };
 
+  // Generate avatar color based on username
+  const getAvatarColors = () => {
+    if (!user?.username) return [COLORS.primary, COLORS.primaryLight];
+    const colors = [
+      [COLORS.primary, COLORS.primaryLight],
+      ['#00D9A5', '#00B894'],
+      ['#FF6B6B', '#EE5A24'],
+      ['#FDA7DF', '#D980FA'],
+    ];
+    const index = user.username.charCodeAt(0) % colors.length;
+    return colors[index];
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <ScrollView>
-        <View style={styles.section}>
-          <View style={styles.profileCard}>
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={40} color="#FFFFFF" />
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.username}>@{user?.username}</Text>
-              <Text style={styles.userId}>ID: {user?.id?.slice(0, 8)}...</Text>
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Настройки</Text>
+        </View>
+        
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={styles.section}>
+            <View style={styles.profileCard}>
+              <LinearGradient
+                colors={getAvatarColors()}
+                style={styles.avatar}
+              >
+                <Text style={styles.avatarText}>
+                  {user?.username?.charAt(0).toUpperCase()}
+                </Text>
+              </LinearGradient>
+              <View style={styles.profileInfo}>
+                <Text style={styles.username}>@{user?.username}</Text>
+                <Text style={styles.userEmail}>{user?.email}</Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Блокировка</Text>
-          
-          <TouchableOpacity style={styles.menuItem} onPress={handleSetupPin}>
-            <Ionicons name="keypad-outline" size={24} color="#007AFF" />
-            <View style={styles.menuItemContent}>
-              <Text style={styles.menuItemText}>PIN-код</Text>
-              <Text style={styles.menuItemSubtext}>
-                {isPinSet ? 'Установлен' : 'Не установлен'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
-          </TouchableOpacity>
-          
-          {isBiometricAvailable && (
-            <View style={styles.switchItem}>
-              <Ionicons name="finger-print" size={24} color="#007AFF" />
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Блокировка</Text>
+            
+            <TouchableOpacity style={styles.menuItem} onPress={handleSetupPin}>
+              <View style={[styles.menuIcon, { backgroundColor: COLORS.primary + '20' }]}>
+                <Ionicons name="keypad" size={20} color={COLORS.primary} />
+              </View>
               <View style={styles.menuItemContent}>
-                <Text style={styles.menuItemText}>Биометрия</Text>
+                <Text style={styles.menuItemText}>PIN-код</Text>
                 <Text style={styles.menuItemSubtext}>
-                  Отпечаток пальца / Face ID
+                  {isPinSet ? 'Установлен' : 'Не установлен'}
                 </Text>
               </View>
-              <Switch
-                value={isBiometricEnabled}
-                onValueChange={handleBiometricToggle}
-                trackColor={{ false: '#E0E0E0', true: '#34C759' }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-          )}
-        </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+            
+            {isBiometricAvailable && (
+              <View style={styles.switchItem}>
+                <View style={[styles.menuIcon, { backgroundColor: COLORS.success + '20' }]}>
+                  <Ionicons name="finger-print" size={20} color={COLORS.success} />
+                </View>
+                <View style={styles.menuItemContent}>
+                  <Text style={styles.menuItemText}>Биометрия</Text>
+                  <Text style={styles.menuItemSubtext}>
+                    Отпечаток пальца / Face ID
+                  </Text>
+                </View>
+                <Switch
+                  value={isBiometricEnabled}
+                  onValueChange={handleBiometricToggle}
+                  trackColor={{ false: COLORS.surfaceLight, true: COLORS.primary }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+            )}
+          </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Безопасность</Text>
-          
-          <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <Ionicons name="shield-checkmark" size={24} color="#34C759" />
-              <View style={styles.infoContent}>
-                <Text style={styles.infoTitle}>Сквозное шифрование</Text>
-                <Text style={styles.infoText}>Все сообщения зашифрованы вашими ключами</Text>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Безопасность</Text>
+            
+            <View style={styles.infoCard}>
+              <View style={styles.infoRow}>
+                <View style={[styles.menuIcon, { backgroundColor: COLORS.success + '20' }]}>
+                  <Ionicons name="shield-checkmark" size={20} color={COLORS.success} />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoTitle}>Сквозное шифрование</Text>
+                  <Text style={styles.infoText}>Сообщения зашифрованы вашими ключами</Text>
+                </View>
               </View>
-            </View>
-            
-            <View style={styles.separator} />
-            
-            <View style={styles.infoRow}>
-              <Ionicons name="key" size={24} color="#007AFF" />
-              <View style={styles.infoContent}>
-                <Text style={styles.infoTitle}>Локальные ключи</Text>
-                <Text style={styles.infoText}>Ключи хранятся только на устройстве</Text>
+              
+              <View style={styles.separator} />
+              
+              <View style={styles.infoRow}>
+                <View style={[styles.menuIcon, { backgroundColor: COLORS.primary + '20' }]}>
+                  <Ionicons name="key" size={20} color={COLORS.primary} />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoTitle}>Локальные ключи</Text>
+                  <Text style={styles.infoText}>Ключи хранятся только на устройстве</Text>
+                </View>
               </View>
-            </View>
-            
-            <View style={styles.separator} />
-            
-            <View style={styles.infoRow}>
-              <Ionicons name="server-outline" size={24} color="#FF9500" />
-              <View style={styles.infoContent}>
-                <Text style={styles.infoTitle}>Сервер без доступа</Text>
-                <Text style={styles.infoText}>Сервер не может прочитать сообщения</Text>
+              
+              <View style={styles.separator} />
+              
+              <View style={styles.infoRow}>
+                <View style={[styles.menuIcon, { backgroundColor: COLORS.warning + '20' }]}>
+                  <Ionicons name="server-outline" size={20} color={COLORS.warning} />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoTitle}>Сервер без доступа</Text>
+                  <Text style={styles.infoText}>Сервер не может прочитать сообщения</Text>
+                </View>
               </View>
             </View>
           </View>
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Аккаунт</Text>
-          
-          <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={24} color="#007AFF" />
-            <Text style={[styles.menuItemText, { marginLeft: 12, flex: 1 }]}>Выйти</Text>
-            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={[styles.menuItem, styles.dangerItem]} onPress={handleDeleteAccount}>
-            <Ionicons name="trash-outline" size={24} color="#FF3B30" />
-            <Text style={[styles.menuItemText, styles.dangerText, { marginLeft: 12, flex: 1 }]}>
-              Удалить ключи и данные
-            </Text>
-            <Ionicons name="chevron-forward" size={20} color="#C7C7CC" />
-          </TouchableOpacity>
-        </View>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Аккаунт</Text>
+            
+            <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
+              <View style={[styles.menuIcon, { backgroundColor: COLORS.primary + '20' }]}>
+                <Ionicons name="log-out-outline" size={20} color={COLORS.primary} />
+              </View>
+              <Text style={[styles.menuItemText, { flex: 1 }]}>Выйти</Text>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={[styles.menuItem, styles.dangerItem]} onPress={handleDeleteAccount}>
+              <View style={[styles.menuIcon, { backgroundColor: COLORS.error + '20' }]}>
+                <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+              </View>
+              <Text style={[styles.menuItemText, styles.dangerText, { flex: 1 }]}>
+                Удалить ключи и данные
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>SecureChat v1.0</Text>
-          <Text style={styles.footerSubtext}>Защищённый мессенджер</Text>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Anonym X v1.0</Text>
+            <Text style={styles.footerSubtext}>Защищённый мессенджер</Text>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: COLORS.background,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: COLORS.text,
   },
   section: {
     marginTop: 24,
@@ -215,44 +282,49 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#8E8E93',
+    color: COLORS.textSecondary,
     textTransform: 'uppercase',
-    marginLeft: 16,
+    marginLeft: 20,
     marginBottom: 8,
   },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
     marginHorizontal: 16,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   avatar: {
     width: 64,
     height: 64,
-    borderRadius: 32,
-    backgroundColor: '#007AFF',
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarText: {
+    fontSize: 26,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
   profileInfo: {
     marginLeft: 16,
+    flex: 1,
   },
   username: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#000',
+    color: COLORS.text,
   },
-  userId: {
+  userEmail: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: COLORS.textSecondary,
     marginTop: 4,
   },
   infoCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
     marginHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
   },
   infoRow: {
@@ -266,55 +338,62 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#000',
+    color: COLORS.text,
   },
   infoText: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: COLORS.textSecondary,
     marginTop: 2,
   },
   separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: '#E0E0E0',
+    height: 1,
+    backgroundColor: COLORS.border,
     marginVertical: 12,
-    marginLeft: 36,
+    marginLeft: 44,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
     marginHorizontal: 16,
-    marginBottom: 1,
-    padding: 16,
-    borderRadius: 12,
+    marginBottom: 2,
+    padding: 14,
+    borderRadius: 16,
+  },
+  menuIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   menuItemContent: {
     flex: 1,
-    marginLeft: 12,
   },
   menuItemText: {
-    fontSize: 17,
-    color: '#000',
+    fontSize: 16,
+    color: COLORS.text,
   },
   menuItemSubtext: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: COLORS.textSecondary,
     marginTop: 2,
   },
   switchItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
     marginHorizontal: 16,
-    marginTop: 1,
-    padding: 16,
-    borderRadius: 12,
+    marginTop: 2,
+    padding: 14,
+    borderRadius: 16,
   },
   dangerItem: {
     marginTop: 12,
   },
   dangerText: {
-    color: '#FF3B30',
+    color: COLORS.error,
   },
   footer: {
     alignItems: 'center',
@@ -322,11 +401,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: COLORS.textSecondary,
   },
   footerSubtext: {
     fontSize: 12,
-    color: '#C7C7CC',
+    color: COLORS.border,
     marginTop: 4,
   },
 });
