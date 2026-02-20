@@ -67,3 +67,37 @@ export const AUTO_DELETE_OPTIONS = [
   { label: '1 час', value: 3600 },
   { label: '24 часа', value: 86400 },
 ];
+
+// Group types
+export interface Group {
+  id: string;
+  name: string;
+  creator_id: string;
+  avatar_color: string;
+  created_at: string;
+  members: GroupMember[];
+  member_count?: number;
+  last_message?: {
+    content: string | null;
+    sender_username: string | null;
+    timestamp: string | null;
+  } | null;
+}
+
+export interface GroupMember {
+  user_id: string;
+  username: string;
+  role: 'admin' | 'member';
+  joined_at: string;
+}
+
+export interface GroupMessage {
+  id: string;
+  group_id: string;
+  sender_id: string;
+  sender_username: string;
+  content: string;
+  message_type: string;
+  timestamp: string;
+  reply_to_id?: string;
+}
