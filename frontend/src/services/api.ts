@@ -170,4 +170,52 @@ export const contactsApi = {
   },
 };
 
+// Groups API
+export const groupsApi = {
+  create: async (data: { name: string; creator_id: string; member_ids: string[] }) => {
+    const response = await api.post('/groups', data);
+    return response.data;
+  },
+
+  getUserGroups: async (userId: string) => {
+    const response = await api.get(`/groups/${userId}`);
+    return response.data;
+  },
+
+  getGroupInfo: async (groupId: string) => {
+    const response = await api.get(`/groups/${groupId}/info`);
+    return response.data;
+  },
+
+  updateGroup: async (groupId: string, data: { name?: string }, userId: string) => {
+    const response = await api.put(`/groups/${groupId}`, data, { params: { user_id: userId } });
+    return response.data;
+  },
+
+  addMember: async (groupId: string, memberId: string, adminId: string) => {
+    const response = await api.post(`/groups/${groupId}/members/${memberId}`, null, { params: { admin_id: adminId } });
+    return response.data;
+  },
+
+  removeMember: async (groupId: string, memberId: string, adminId: string) => {
+    const response = await api.delete(`/groups/${groupId}/members/${memberId}`, { params: { admin_id: adminId } });
+    return response.data;
+  },
+
+  sendMessage: async (groupId: string, data: { sender_id: string; content: string; message_type?: string; reply_to_id?: string }) => {
+    const response = await api.post(`/groups/${groupId}/messages`, { group_id: groupId, ...data });
+    return response.data;
+  },
+
+  getMessages: async (groupId: string, limit?: number, before?: string) => {
+    const response = await api.get(`/groups/${groupId}/messages`, { params: { limit, before } });
+    return response.data;
+  },
+
+  deleteGroup: async (groupId: string, userId: string) => {
+    const response = await api.delete(`/groups/${groupId}`, { params: { user_id: userId } });
+    return response.data;
+  },
+};
+
 export default api;
