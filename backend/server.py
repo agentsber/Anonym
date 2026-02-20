@@ -809,6 +809,7 @@ async def get_group_members(group_id: str) -> List[dict]:
         }},
         {"$unwind": "$user_info"},
         {"$project": {
+            "_id": 0,
             "user_id": 1,
             "username": "$user_info.username",
             "role": 1,
@@ -816,6 +817,10 @@ async def get_group_members(group_id: str) -> List[dict]:
         }}
     ]
     members = await db.group_members.aggregate(pipeline).to_list(1000)
+    # Convert joined_at to ISO string for JSON serialization
+    for member in members:
+        if "joined_at" in member and member["joined_at"]:
+            member["joined_at"] = member["joined_at"].isoformat()
     return members
 
 @api_router.get("/groups/{user_id}")
