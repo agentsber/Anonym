@@ -729,11 +729,32 @@ export default function GroupChatScreen() {
           </View>
         )}
 
+        {/* Recording Bar */}
+        {isRecording && (
+          <View style={styles.recordingBar}>
+            <TouchableOpacity style={styles.recordingCancel} onPress={cancelRecording}>
+              <Ionicons name="trash" size={24} color={COLORS.error} />
+            </TouchableOpacity>
+            <View style={styles.recordingInfo}>
+              <View style={styles.recordingDot} />
+              <Text style={styles.recordingTime}>{formatDuration(recordingDuration)}</Text>
+              <Text style={styles.recordingText}>Запись...</Text>
+            </View>
+            <TouchableOpacity style={styles.recordingStop} onPress={stopRecording}>
+              <Ionicons name="checkmark-circle" size={40} color={COLORS.success} />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Input Bar */}
-        {!editingMessage && (
+        {!editingMessage && !isRecording && (
           <View style={styles.inputContainer}>
             <TouchableOpacity style={styles.attachButton} onPress={handlePickImage}>
               <Ionicons name="image" size={24} color={COLORS.primary} />
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.attachButton} onPress={() => setShowStickers(!showStickers)}>
+              <Ionicons name="happy" size={24} color={showStickers ? COLORS.warning : COLORS.primary} />
             </TouchableOpacity>
             
             <TextInput
@@ -745,17 +766,54 @@ export default function GroupChatScreen() {
               multiline
             />
             
-            <TouchableOpacity 
-              style={[styles.sendButton, (!inputText.trim() || isSending) && styles.sendButtonDisabled]}
-              onPress={handleSend}
-              disabled={!inputText.trim() || isSending}
-            >
-              {isSending ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <Ionicons name="send" size={20} color="#FFF" />
-              )}
-            </TouchableOpacity>
+            {inputText.trim() ? (
+              <TouchableOpacity 
+                style={[styles.sendButton, isSending && styles.sendButtonDisabled]}
+                onPress={handleSend}
+                disabled={isSending}
+              >
+                {isSending ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Ionicons name="send" size={20} color="#FFF" />
+                )}
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                style={styles.voiceButton}
+                onPress={startRecording}
+              >
+                <Ionicons name="mic" size={24} color={COLORS.primary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* Stickers Panel */}
+        {showStickers && (
+          <View style={styles.stickersPanel}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.stickerPackTabs}>
+              {stickerPacks.map((pack, index) => (
+                <TouchableOpacity
+                  key={pack.id}
+                  style={[styles.stickerPackTab, activePackIndex === index && styles.stickerPackTabActive]}
+                  onPress={() => setActivePackIndex(index)}
+                >
+                  <Text style={styles.stickerPackTabText}>{pack.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <View style={styles.stickersGrid}>
+              {stickerPacks[activePackIndex]?.stickers.map((sticker, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.stickerItem}
+                  onPress={() => handleSendSticker(sticker)}
+                >
+                  <Text style={styles.stickerEmoji}>{sticker}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         )}
       </KeyboardAvoidingView>
