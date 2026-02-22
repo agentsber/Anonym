@@ -162,5 +162,40 @@ All screens now use consistent dark theme:
 
 ## Database Schema
 - **users:** `{_id, username, email, password_hash, contacts, last_seen}`
+
+
+## Production Deployment Setup (Completed 2025-02-22)
+
+### Файлы деплоя
+- `/app/DEPLOY.md` - Полное руководство по развертыванию на своём сервере
+- `/app/docker-compose.yml` - Development конфигурация
+- `/app/docker-compose.prod.yml` - Production конфигурация  
+- `/app/deploy.sh` - Скрипт управления деплоем
+- `/app/.env.example` - Пример переменных окружения
+- `/app/backend/.env.prod.example` - Backend production env
+- `/app/frontend/.env.prod.example` - Frontend production env
+- `/app/nginx/nginx.conf` - Nginx конфигурация с SSL и WebSocket
+
+### Команды деплоя
+```bash
+./deploy.sh setup     # Начальная настройка
+./deploy.sh build     # Сборка контейнеров
+./deploy.sh start     # Запуск
+./deploy.sh stop      # Остановка
+./deploy.sh restart   # Перезапуск
+./deploy.sh logs      # Просмотр логов
+./deploy.sh backup    # Бэкап MongoDB
+./deploy.sh restore   # Восстановление
+./deploy.sh ssl       # Установка Let's Encrypt SSL
+```
+
+### Сборка APK
+```bash
+cd frontend
+cp .env.prod.example .env
+# Изменить EXPO_PUBLIC_BACKEND_URL на ваш домен
+eas build -p android --profile preview
+```
+
 - **groups:** `{_id, name, owner, members, admins, banned_users, pinned_messages}`
 - **messages:** `{_id, sender, receiver, content, timestamp, type, status, is_edited...}`
