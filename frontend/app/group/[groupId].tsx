@@ -19,9 +19,16 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import { Audio } from 'expo-av';
 import { useAuthStore } from '../../src/stores/authStore';
-import { groupsApi, forwardApi } from '../../src/services/api';
+import { groupsApi, forwardApi, stickersApi, voiceApi } from '../../src/services/api';
 import { Group, GroupMessage } from '../../src/types';
+
+interface StickerPack {
+  id: string;
+  name: string;
+  stickers: string[];
+}
 
 const COLORS = {
   background: '#0A0A0A',
