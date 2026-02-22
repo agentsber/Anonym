@@ -18,13 +18,15 @@ const COLORS = {
 
 export default function WelcomeScreen() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, isInitialized } = useAuthStore();
 
   React.useEffect(() => {
-    if (user) {
+    // Wait for auth to initialize, then redirect if user exists
+    if (isInitialized && user) {
+      console.log('User found, redirecting to tabs...', user.username);
       router.replace('/(tabs)');
     }
-  }, [user]);
+  }, [user, isInitialized]);
 
   return (
     <View style={styles.container}>
@@ -83,7 +85,7 @@ export default function WelcomeScreen() {
           
           <TouchableOpacity
             style={styles.secondaryButton}
-            onPress={() => router.push('/auth/register')}
+            onPress={() => router.push('/auth/login')}
           >
             <Text style={styles.secondaryButtonText}>У меня уже есть аккаунт</Text>
           </TouchableOpacity>
