@@ -143,8 +143,9 @@ class GroupMessageSend(BaseModel):
     group_id: str
     sender_id: str
     content: str  # Plain text for groups (simplified)
-    message_type: str = "text"
+    message_type: str = "text"  # text, image, video, file
     reply_to_id: Optional[str] = None
+    media_url: Optional[str] = None  # URL for media files
 
 class GroupMessageResponse(BaseModel):
     id: str
@@ -155,8 +156,18 @@ class GroupMessageResponse(BaseModel):
     message_type: str
     timestamp: datetime
     reply_to_id: Optional[str] = None
-    auto_delete_seconds: Optional[int] = None
-    expires_at: Optional[datetime] = None
+    media_url: Optional[str] = None
+    is_edited: bool = False
+    is_pinned: bool = False
+
+class GroupMessageEdit(BaseModel):
+    content: str
+    
+class GroupMemberUpdate(BaseModel):
+    role: str  # "admin" or "member"
+
+class GroupBanMember(BaseModel):
+    reason: Optional[str] = None
 
 class MessageEdit(BaseModel):
     encrypted_content: str
