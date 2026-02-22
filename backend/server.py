@@ -1,5 +1,6 @@
 from fastapi import FastAPI, APIRouter, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Form
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -44,6 +45,15 @@ async def health_check():
 @app.get("/")
 async def root():
     return {"message": "Secure Messenger API", "status": "running"}
+
+# Admin panel route
+@app.get("/admin")
+async def admin_panel():
+    """Serve admin panel"""
+    admin_path = Path("/app/admin/index.html")
+    if admin_path.exists():
+        return FileResponse(admin_path)
+    return {"error": "Admin panel not found"}
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
