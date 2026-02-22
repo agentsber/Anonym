@@ -1063,12 +1063,15 @@ async def send_group_message(group_id: str, message: GroupMessageSend):
     }
 
 @api_router.get("/groups/{group_id}/messages")
-async def get_group_messages(group_id: str, limit: int = 50, before: Optional[str] = None):
-    """Get messages from a group"""
-    query = {"group_id": group_id}
+async def get_group_messages(group_id: str, limit: int = 50, before: Optional[str] = None, search: Optional[str] = None):
+    """Get messages from a group with optional search"""
+    query = {"group_id": group_id, "is_deleted": {"$ne": True}}
     
     if before:
         query["timestamp"] = {"$lt": datetime.fromisoformat(before)}
+    
+    if search:
+        query["content"] = {"$regex": search, "$options": "i"}
     
     messages = await db.group_messages.find(query).sort("timestamp", -1).limit(limit).to_list(limit)
     
@@ -1079,9 +1082,291 @@ async def get_group_messages(group_id: str, limit: int = 50, before: Optional[st
         "sender_username": m.get("sender_username", "Unknown"),
         "content": m["content"],
         "message_type": m["message_type"],
+        "media_url": m.get("media_url"),
         "timestamp": m["timestamp"].isoformat(),
-        "reply_to_id": m.get("reply_to_id")
+        "reply_to_id": m.get("reply_to_id"),
+        "is_edited": m.get("is_edited", False),
+        "is_pinned": m.get("is_pinned", False)
     } for m in reversed(messages)]
+
+# ==================== Edit/Delete Group Messages ====================
+
+@api_router.put("/groups/{group_id}/messages/{message_id}")
+async def edit_group_message(group_id: str, message_id: str, edit: GroupMessageEdit, user_id: str):
+    """Edit a group message (sender only)"""
+    message = await db.group_messages.find_one({"id": message_id, "group_id": group_id})
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+    
+    if message["sender_id"] != user_id:
+        raise HTTPException(status_code=403, detail="You can only edit your own messages")
+    
+    await db.group_messages.update_one(
+        {"id": message_id},
+        {"$set": {"content": edit.content, "is_edited": True, "edited_at": datetime.utcnow()}}
+    )
+    
+    # Notify group members
+    members = await db.group_members.find({"group_id": group_id}).to_list(1000)
+    for member in members:
+        if member["user_id"] != user_id:
+            await manager.send_personal_message({
+                "type": "group_message_edited",
+                "group_id": group_id,
+                "message_id": message_id,
+                "content": edit.content
+            }, member["user_id"])
+    
+    return {"status": "edited"}
+
+@api_router.delete("/groups/{group_id}/messages/{message_id}")
+async def delete_group_message(group_id: str, message_id: str, user_id: str):
+    """Delete a group message (sender or admin)"""
+    message = await db.group_messages.find_one({"id": message_id, "group_id": group_id})
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+    
+    # Check if user is sender or admin
+    is_sender = message["sender_id"] == user_id
+    membership = await db.group_members.find_one({"group_id": group_id, "user_id": user_id})
+    is_admin = membership and membership.get("role") == "admin"
+    
+    if not is_sender and not is_admin:
+        raise HTTPException(status_code=403, detail="Only sender or admin can delete messages")
+    
+    await db.group_messages.update_one(
+        {"id": message_id},
+        {"$set": {"is_deleted": True, "content": "Сообщение удалено", "deleted_at": datetime.utcnow()}}
+    )
+    
+    # Notify group members
+    members = await db.group_members.find({"group_id": group_id}).to_list(1000)
+    for member in members:
+        await manager.send_personal_message({
+            "type": "group_message_deleted",
+            "group_id": group_id,
+            "message_id": message_id
+        }, member["user_id"])
+    
+    return {"status": "deleted"}
+
+# ==================== Pin Messages ====================
+
+@api_router.post("/groups/{group_id}/messages/{message_id}/pin")
+async def pin_group_message(group_id: str, message_id: str, user_id: str):
+    """Pin a message (admin only)"""
+    membership = await db.group_members.find_one({"group_id": group_id, "user_id": user_id})
+    if not membership or membership.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can pin messages")
+    
+    message = await db.group_messages.find_one({"id": message_id, "group_id": group_id})
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+    
+    await db.group_messages.update_one(
+        {"id": message_id},
+        {"$set": {"is_pinned": True, "pinned_by": user_id, "pinned_at": datetime.utcnow()}}
+    )
+    
+    # Notify group members
+    members = await db.group_members.find({"group_id": group_id}).to_list(1000)
+    for member in members:
+        await manager.send_personal_message({
+            "type": "group_message_pinned",
+            "group_id": group_id,
+            "message_id": message_id
+        }, member["user_id"])
+    
+    return {"status": "pinned"}
+
+@api_router.delete("/groups/{group_id}/messages/{message_id}/pin")
+async def unpin_group_message(group_id: str, message_id: str, user_id: str):
+    """Unpin a message (admin only)"""
+    membership = await db.group_members.find_one({"group_id": group_id, "user_id": user_id})
+    if not membership or membership.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can unpin messages")
+    
+    await db.group_messages.update_one(
+        {"id": message_id},
+        {"$set": {"is_pinned": False}, "$unset": {"pinned_by": "", "pinned_at": ""}}
+    )
+    
+    return {"status": "unpinned"}
+
+@api_router.get("/groups/{group_id}/pinned")
+async def get_pinned_messages(group_id: str):
+    """Get all pinned messages in a group"""
+    messages = await db.group_messages.find({
+        "group_id": group_id,
+        "is_pinned": True,
+        "is_deleted": {"$ne": True}
+    }).sort("pinned_at", -1).to_list(100)
+    
+    return [{
+        "id": m["id"],
+        "sender_id": m["sender_id"],
+        "sender_username": m.get("sender_username", "Unknown"),
+        "content": m["content"],
+        "message_type": m["message_type"],
+        "timestamp": m["timestamp"].isoformat(),
+        "pinned_at": m.get("pinned_at", "").isoformat() if m.get("pinned_at") else None
+    } for m in messages]
+
+# ==================== Admin Management ====================
+
+@api_router.put("/groups/{group_id}/members/{member_id}/role")
+async def update_member_role(group_id: str, member_id: str, update: GroupMemberUpdate, admin_id: str):
+    """Promote/demote member (admin only, can't demote creator)"""
+    # Check if requester is admin
+    admin_membership = await db.group_members.find_one({
+        "group_id": group_id,
+        "user_id": admin_id,
+        "role": "admin"
+    })
+    if not admin_membership:
+        raise HTTPException(status_code=403, detail="Only admins can change roles")
+    
+    # Can't change creator's role
+    group = await db.groups.find_one({"id": group_id})
+    if group and group["creator_id"] == member_id:
+        raise HTTPException(status_code=400, detail="Cannot change creator's role")
+    
+    # Check if target member exists
+    target_membership = await db.group_members.find_one({
+        "group_id": group_id,
+        "user_id": member_id
+    })
+    if not target_membership:
+        raise HTTPException(status_code=404, detail="Member not found")
+    
+    if update.role not in ["admin", "member"]:
+        raise HTTPException(status_code=400, detail="Role must be 'admin' or 'member'")
+    
+    await db.group_members.update_one(
+        {"group_id": group_id, "user_id": member_id},
+        {"$set": {"role": update.role}}
+    )
+    
+    return {"status": "updated", "new_role": update.role}
+
+# ==================== Ban Management ====================
+
+@api_router.post("/groups/{group_id}/ban/{member_id}")
+async def ban_member(group_id: str, member_id: str, ban: GroupBanMember, admin_id: str):
+    """Ban a member from group (admin only)"""
+    # Check if requester is admin
+    admin_membership = await db.group_members.find_one({
+        "group_id": group_id,
+        "user_id": admin_id,
+        "role": "admin"
+    })
+    if not admin_membership:
+        raise HTTPException(status_code=403, detail="Only admins can ban members")
+    
+    # Can't ban creator
+    group = await db.groups.find_one({"id": group_id})
+    if group and group["creator_id"] == member_id:
+        raise HTTPException(status_code=400, detail="Cannot ban group creator")
+    
+    # Can't ban yourself
+    if member_id == admin_id:
+        raise HTTPException(status_code=400, detail="Cannot ban yourself")
+    
+    # Remove from members
+    await db.group_members.delete_one({
+        "group_id": group_id,
+        "user_id": member_id
+    })
+    
+    # Add to ban list
+    await db.group_bans.insert_one({
+        "group_id": group_id,
+        "user_id": member_id,
+        "banned_by": admin_id,
+        "reason": ban.reason,
+        "banned_at": datetime.utcnow()
+    })
+    
+    # Notify banned user
+    await manager.send_personal_message({
+        "type": "group_banned",
+        "group_id": group_id,
+        "reason": ban.reason
+    }, member_id)
+    
+    return {"status": "banned"}
+
+@api_router.delete("/groups/{group_id}/ban/{member_id}")
+async def unban_member(group_id: str, member_id: str, admin_id: str):
+    """Unban a member (admin only)"""
+    # Check if requester is admin
+    admin_membership = await db.group_members.find_one({
+        "group_id": group_id,
+        "user_id": admin_id,
+        "role": "admin"
+    })
+    if not admin_membership:
+        raise HTTPException(status_code=403, detail="Only admins can unban members")
+    
+    result = await db.group_bans.delete_one({
+        "group_id": group_id,
+        "user_id": member_id
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="User is not banned")
+    
+    return {"status": "unbanned"}
+
+@api_router.get("/groups/{group_id}/bans")
+async def get_banned_members(group_id: str, admin_id: str):
+    """Get list of banned members (admin only)"""
+    # Check if requester is admin
+    admin_membership = await db.group_members.find_one({
+        "group_id": group_id,
+        "user_id": admin_id,
+        "role": "admin"
+    })
+    if not admin_membership:
+        raise HTTPException(status_code=403, detail="Only admins can view ban list")
+    
+    bans = await db.group_bans.find({"group_id": group_id}).to_list(1000)
+    
+    result = []
+    for ban in bans:
+        user = await db.users.find_one({"id": ban["user_id"]})
+        result.append({
+            "user_id": ban["user_id"],
+            "username": user["username"] if user else "Unknown",
+            "reason": ban.get("reason"),
+            "banned_at": ban["banned_at"].isoformat(),
+            "banned_by": ban["banned_by"]
+        })
+    
+    return result
+
+# ==================== Search Messages ====================
+
+@api_router.get("/groups/{group_id}/search")
+async def search_group_messages(group_id: str, q: str, limit: int = 50):
+    """Search messages in a group"""
+    if not q or len(q) < 2:
+        raise HTTPException(status_code=400, detail="Search query must be at least 2 characters")
+    
+    messages = await db.group_messages.find({
+        "group_id": group_id,
+        "content": {"$regex": q, "$options": "i"},
+        "is_deleted": {"$ne": True}
+    }).sort("timestamp", -1).limit(limit).to_list(limit)
+    
+    return [{
+        "id": m["id"],
+        "sender_id": m["sender_id"],
+        "sender_username": m.get("sender_username", "Unknown"),
+        "content": m["content"],
+        "message_type": m["message_type"],
+        "timestamp": m["timestamp"].isoformat()
+    } for m in messages]
 
 @api_router.delete("/groups/{group_id}")
 async def delete_group(group_id: str, user_id: str):
@@ -1096,6 +1381,7 @@ async def delete_group(group_id: str, user_id: str):
     # Delete all related data
     await db.group_messages.delete_many({"group_id": group_id})
     await db.group_members.delete_many({"group_id": group_id})
+    await db.group_bans.delete_many({"group_id": group_id})
     await db.groups.delete_one({"id": group_id})
     
     logger.info(f"Group {group_id} deleted")
