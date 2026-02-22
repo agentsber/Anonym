@@ -250,6 +250,43 @@ export default function GroupChatScreen() {
     }
   };
 
+  const handleForwardOpen = async () => {
+    if (!selectedMessage || !user) return;
+    setShowMessageMenu(false);
+    
+    try {
+      const targets = await forwardApi.getTargets(user.id);
+      setForwardTargets(targets);
+      setShowForward(true);
+    } catch (err) {
+      console.error('Error loading forward targets:', err);
+      Alert.alert('Ошибка', 'Не удалось загрузить контакты');
+    }
+  };
+
+  const handleForward = async (target: ForwardTarget) => {
+    if (!selectedMessage || !user) return;
+    
+    setIsForwarding(true);
+    try {
+      await forwardApi.forwardMessage({
+        sender_id: user.id,
+        original_message_id: selectedMessage.id,
+        original_message_type: 'group',
+        target_type: target.type,
+        target_id: target.id,
+      });
+      
+      setShowForward(false);
+      setSelectedMessage(null);
+      Alert.alert('Готово', `Сообщение переслано в ${target.name}`);
+    } catch (err: any) {
+      Alert.alert('Ошибка', err.response?.data?.detail || 'Не удалось переслать');
+    } finally {
+      setIsForwarding(false);
+    }
+  };
+
   const handleSearch = async () => {
     if (!groupId || !searchQuery.trim()) return;
     
