@@ -1613,6 +1613,74 @@ async def get_forward_targets(user_id: str):
         "groups": groups
     }
 
+# ==================== Stickers API ====================
+
+@api_router.get("/stickers/packs")
+async def get_sticker_packs():
+    """Get all available sticker packs"""
+    return DEFAULT_STICKER_PACKS
+
+@api_router.get("/stickers/packs/{pack_id}")
+async def get_sticker_pack(pack_id: str):
+    """Get specific sticker pack"""
+    for pack in DEFAULT_STICKER_PACKS:
+        if pack["id"] == pack_id:
+            return pack
+    raise HTTPException(status_code=404, detail="Sticker pack not found")
+
+# ==================== Voice Messages API ====================
+
+@api_router.post("/upload/voice")
+async def upload_voice_message(
+    file: UploadFile = File(...),
+    sender_id: str = Form(...),
+    duration: float = Form(...)
+):
+    """Upload a voice message file"""
+    # Validate file type
+    if not file.content_type or not file.content_type.startswith("audio/"):
+        raise HTTPException(status_code=400, detail="Invalid file type. Must be audio.")
+    
+    # Read file content
+    content = await file.read()
+    
+    # Generate unique file ID
+    file_id = str(uuid.uuid4())
+    
+    # Store in database as base64 (for simplicity, in production use cloud storage)
+    voice_doc = {
+        "id": file_id,
+        "sender_id": sender_id,
+        "content_type": file.content_type,
+        "data": base64.b64encode(content).decode('utf-8'),
+        "duration": duration,
+        "created_at": datetime.utcnow()
+    }
+    
+    await db.voice_messages.insert_one(voice_doc)
+    
+    return {
+        "id": file_id,
+        "url": f"/api/voice/{file_id}",
+        "duration": duration
+    }
+
+@api_router.get("/voice/{file_id}")
+async def get_voice_message(file_id: str):
+    """Get voice message file"""
+    voice = await db.voice_messages.find_one({"id": file_id})
+    if not voice:
+        raise HTTPException(status_code=404, detail="Voice message not found")
+    
+    # Decode base64 content
+    content = base64.b64decode(voice["data"])
+    
+    return Response(
+        content=content,
+        media_type=voice["content_type"],
+        headers={"Content-Disposition": f'attachment; filename="voice_{file_id}.m4a"'}
+    )
+
 # ==================== WebSocket Endpoint ====================
 
 @app.websocket("/ws/{user_id}")
