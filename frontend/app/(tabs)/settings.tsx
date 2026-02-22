@@ -212,6 +212,26 @@ export default function SettingsScreen() {
                 />
               </View>
             )}
+            
+            {isPinSet && (
+              <View style={styles.switchItem}>
+                <View style={[styles.menuIcon, { backgroundColor: COLORS.error + '20' }]}>
+                  <Ionicons name="nuclear" size={20} color={COLORS.error} />
+                </View>
+                <View style={styles.menuItemContent}>
+                  <Text style={styles.menuItemText}>Автоудаление</Text>
+                  <Text style={styles.menuItemSubtext}>
+                    Удалить данные после 5 неверных попыток
+                  </Text>
+                </View>
+                <Switch
+                  value={isWipeEnabled}
+                  onValueChange={handleWipeToggle}
+                  trackColor={{ false: COLORS.surfaceLight, true: COLORS.error }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+            )}
           </View>
 
           <View style={styles.section}>
