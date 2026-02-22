@@ -44,6 +44,16 @@ export default function ChatsScreen() {
     }
   }, [user]);
 
+  // Обновление списка групп при каждом фокусе на экране
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        loadGroups();
+        loadContacts(user.id);
+      }
+    }, [user])
+  );
+
   const loadGroups = async () => {
     if (!user) return;
     try {
