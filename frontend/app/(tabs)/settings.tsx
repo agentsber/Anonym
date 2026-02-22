@@ -271,6 +271,18 @@ export default function SettingsScreen() {
                   <Text style={styles.infoText}>Сервер не может прочитать сообщения</Text>
                 </View>
               </View>
+              
+              <View style={styles.separator} />
+              
+              <View style={styles.infoRow}>
+                <View style={[styles.menuIcon, { backgroundColor: '#00D9A5' + '20' }]}>
+                  <Ionicons name="lock-closed" size={20} color="#00D9A5" />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoTitle}>Certificate Pinning</Text>
+                  <Text style={styles.infoText}>Защита от MITM атак (в production)</Text>
+                </View>
+              </View>
             </View>
           </View>
 
