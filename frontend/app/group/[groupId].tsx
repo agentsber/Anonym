@@ -530,6 +530,11 @@ export default function GroupChatScreen() {
               <Text style={styles.menuText}>Ответить</Text>
             </TouchableOpacity>
             
+            <TouchableOpacity style={styles.menuItem} onPress={handleForwardOpen}>
+              <Ionicons name="arrow-redo" size={20} color={COLORS.primary} />
+              <Text style={styles.menuText}>Переслать</Text>
+            </TouchableOpacity>
+            
             {selectedMessage?.sender_id === user?.id && (
               <TouchableOpacity style={styles.menuItem} onPress={handleEdit}>
                 <Ionicons name="pencil" size={20} color={COLORS.text} />
