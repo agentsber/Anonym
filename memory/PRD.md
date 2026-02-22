@@ -12,8 +12,17 @@
 - [x] Исчезающие сообщения
 - [x] Ответ на сообщение
 - [x] Редактирование/удаление сообщений
-- [x] **Групповые чаты** (ЗАВЕРШЕНО 20.02.2026)
-- [x] **Управление группой** (ЗАВЕРШЕНО 20.02.2026)
+- [x] **Групповые чаты** (ЗАВЕРШЕНО)
+- [x] **Управление группой** (ЗАВЕРШЕНО)
+- [x] **Расширенные групповые чаты** (ЗАВЕРШЕНО 22.02.2026):
+  - [x] Отправка фото/медиа
+  - [x] Ответ на сообщение (reply)
+  - [x] Редактирование/удаление сообщений
+  - [x] Несколько администраторов
+  - [x] Push-уведомления (WebSocket)
+  - [x] Закрепление сообщений
+  - [x] Поиск по сообщениям
+  - [x] Блокировка участников (бан)
 - [ ] Пересылка сообщений (P1)
 - [ ] Голосовые сообщения (P2)
 - [ ] Стикеры (P2)
@@ -23,50 +32,53 @@
 ```
 /app
 ├── backend/
-│   ├── server.py       # FastAPI: API endpoints, WebSockets, DB
+│   ├── server.py
+│   ├── Dockerfile
 │   └── requirements.txt
-└── frontend/
-    ├── app/
-    │   ├── (tabs)/     # Главный экран с чатами
-    │   ├── auth/       # Регистрация/вход
-    │   ├── chat/       # Индивидуальные чаты
-    │   ├── group/      # Групповые чаты
-    │   ├── group-manage/  # Управление группой (NEW)
-    │   └── create-group.tsx
-    └── src/
-        ├── services/api.ts
-        ├── stores/
-        └── types/
+├── frontend/
+│   ├── app/
+│   │   ├── (tabs)/
+│   │   ├── auth/
+│   │   ├── chat/
+│   │   ├── group/[groupId].tsx     # Групповой чат
+│   │   ├── group-manage/[manageId].tsx  # Управление группой
+│   │   └── create-group.tsx
+│   └── src/
+│       ├── services/api.ts
+│       ├── stores/
+│       └── types/
+├── docker-compose.yml
+├── nginx.conf
+└── DEPLOY.md
 ```
 
-## Технологический стек
-- **Frontend:** React Native (Expo), TypeScript, Zustand
-- **Backend:** Python, FastAPI, MongoDB
-- **Realtime:** WebSockets
+## API Endpoints для групповых чатов
 
-## Управление группой - Функционал
+### Сообщения
+- `POST /api/groups/{id}/messages` - Отправка (с медиа)
+- `PUT /api/groups/{id}/messages/{msg_id}` - Редактирование
+- `DELETE /api/groups/{id}/messages/{msg_id}` - Удаление
+- `GET /api/groups/{id}/messages` - Получение (с поиском)
 
-### UI Features
-- Просмотр информации о группе (название, аватар, участники)
-- Редактирование названия группы (только админ)
-- Просмотр списка участников с ролями (Администратор/Участник)
-- Добавление участников из контактов (только админ)
-- Удаление участников (только админ, кроме создателя)
-- Покинуть группу (не-создатель)
-- Удалить группу (только создатель)
+### Закрепление
+- `POST /api/groups/{id}/messages/{msg_id}/pin` - Закрепить
+- `DELETE /api/groups/{id}/messages/{msg_id}/pin` - Открепить
+- `GET /api/groups/{id}/pinned` - Список закрепленных
 
-### Backend API
-- `PUT /api/groups/{group_id}` - Обновить название
-- `POST /api/groups/{group_id}/members/{member_id}` - Добавить участника
-- `DELETE /api/groups/{group_id}/members/{member_id}` - Удалить/Покинуть
+### Поиск
+- `GET /api/groups/{id}/search?q=query` - Поиск сообщений
 
-### Навигация
-- Из группового чата: tap на заголовок или кнопку меню (три точки)
-- URL: `/group-manage/[groupId]`
+### Администраторы
+- `PUT /api/groups/{id}/members/{member_id}/role` - Назначить/снять админа
+
+### Блокировка
+- `POST /api/groups/{id}/ban/{member_id}` - Заблокировать
+- `DELETE /api/groups/{id}/ban/{member_id}` - Разблокировать
+- `GET /api/groups/{id}/bans` - Список заблокированных
 
 ## Статус тестирования
-- Backend: 36/36 тестов пройдено
-- Frontend: 90% работает
+- Backend: 29/29 тестов для расширенных функций
+- Frontend: 85% работает
 
 ## Предстоящие задачи
 
