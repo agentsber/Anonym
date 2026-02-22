@@ -54,8 +54,11 @@ All screens now use consistent dark theme:
 
 ## Future Tasks (Backlog)
 - [ ] **P2** Screenshot Protection: Implement `FLAG_SECURE` on Android
+
+## Completed Tasks
 - [x] **P3** Data Wipe on Incorrect PIN: Track failed PIN attempts and wipe data after threshold (COMPLETED - 2025-02-22)
 - [x] **P3** Certificate Pinning: Enhanced security against MITM attacks (COMPLETED - 2025-02-22)
+- [x] **Deployment Preparation** - Full production deployment setup (COMPLETED - 2025-02-22)
 
 ## P3 Features Implemented (2025-02-22)
 
