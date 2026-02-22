@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   BIOMETRIC_ENABLED: 'secure_messenger_biometric',
   LOCK_ENABLED: 'secure_messenger_lock_enabled',
   FAILED_ATTEMPTS: 'secure_messenger_failed_attempts',
+  WIPE_ON_MAX_ATTEMPTS: 'secure_messenger_wipe_enabled',
 };
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -19,17 +20,21 @@ interface SecurityState {
   isBiometricAvailable: boolean;
   failedAttempts: number;
   isInitialized: boolean;
+  isWipeEnabled: boolean;
+  isDataWiped: boolean;
   
   initialize: () => Promise<void>;
   setPin: (pin: string) => Promise<void>;
   verifyPin: (pin: string) => Promise<boolean>;
   removePin: () => Promise<void>;
   enableBiometric: (enabled: boolean) => Promise<void>;
+  enableWipeOnMaxAttempts: (enabled: boolean) => Promise<void>;
   authenticateWithBiometric: () => Promise<boolean>;
   lock: () => void;
   unlock: () => void;
   checkBiometricAvailability: () => Promise<boolean>;
   resetFailedAttempts: () => Promise<void>;
+  wipeAllData: () => Promise<void>;
 }
 
 // Simple hash function for PIN (in production use proper crypto)
@@ -50,17 +55,21 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
   isBiometricAvailable: false,
   failedAttempts: 0,
   isInitialized: false,
+  isWipeEnabled: false,
+  isDataWiped: false,
 
   initialize: async () => {
     try {
-      const [pinHash, biometricEnabled, failedAttemptsStr] = await Promise.all([
+      const [pinHash, biometricEnabled, failedAttemptsStr, wipeEnabled] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEYS.PIN_CODE),
         AsyncStorage.getItem(STORAGE_KEYS.BIOMETRIC_ENABLED),
         AsyncStorage.getItem(STORAGE_KEYS.FAILED_ATTEMPTS),
+        AsyncStorage.getItem(STORAGE_KEYS.WIPE_ON_MAX_ATTEMPTS),
       ]);
       
       const isPinSet = !!pinHash;
       const isBiometricEnabled = biometricEnabled === 'true';
+      const isWipeEnabled = wipeEnabled === 'true';
       const failedAttempts = failedAttemptsStr ? parseInt(failedAttemptsStr, 10) : 0;
       
       // Check biometric availability
@@ -75,6 +84,7 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
         isPinSet,
         isBiometricEnabled,
         isBiometricAvailable,
+        isWipeEnabled,
         failedAttempts,
         isLocked: isPinSet, // Lock if PIN is set
         isInitialized: true,
@@ -110,15 +120,15 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
         set({ failedAttempts: 0 });
         return true;
       } else {
-        const { failedAttempts } = get();
+        const { failedAttempts, isWipeEnabled, wipeAllData } = get();
         const newAttempts = failedAttempts + 1;
         await AsyncStorage.setItem(STORAGE_KEYS.FAILED_ATTEMPTS, newAttempts.toString());
         set({ failedAttempts: newAttempts });
         
-        // Clear data after max attempts
-        if (newAttempts >= MAX_FAILED_ATTEMPTS) {
-          // In production, you might want to clear all data here
-          console.warn('Max failed attempts reached!');
+        // Wipe data after max attempts if enabled
+        if (newAttempts >= MAX_FAILED_ATTEMPTS && isWipeEnabled) {
+          console.warn('Max failed attempts reached! Wiping data...');
+          await wipeAllData();
         }
         
         return false;
@@ -149,6 +159,43 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
       set({ isBiometricEnabled: enabled });
     } catch (error) {
       console.error('Enable biometric error:', error);
+      throw error;
+    }
+  },
+
+  enableWipeOnMaxAttempts: async (enabled: boolean) => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.WIPE_ON_MAX_ATTEMPTS, enabled.toString());
+      set({ isWipeEnabled: enabled });
+    } catch (error) {
+      console.error('Enable wipe error:', error);
+      throw error;
+    }
+  },
+
+  wipeAllData: async () => {
+    try {
+      console.log('Wiping all local data...');
+      
+      // Get all keys from AsyncStorage
+      const allKeys = await AsyncStorage.getAllKeys();
+      
+      // Remove all app data
+      await AsyncStorage.multiRemove(allKeys);
+      
+      // Reset state
+      set({
+        isLocked: false,
+        isPinSet: false,
+        isBiometricEnabled: false,
+        failedAttempts: 0,
+        isWipeEnabled: false,
+        isDataWiped: true,
+      });
+      
+      console.log('All data wiped successfully');
+    } catch (error) {
+      console.error('Wipe data error:', error);
       throw error;
     }
   },
