@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime
 
 # Use production URL from environment
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://group-chat-app-6.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://dark-chat-app-4.preview.emergentagent.com').rstrip('/')
 
 # Test data with alphanumeric usernames only (no underscores)
 TEST_PREFIX = uuid.uuid4().hex[:6]
