@@ -82,7 +82,8 @@ export default function CreateGroupScreen() {
         member_ids: selectedMembers,
       });
       
-      router.replace(`/group/${group.id}`);
+      // Переходим в групповой чат, используем push чтобы можно было вернуться
+      router.push(`/group/${group.id}`);
     } catch (err: any) {
       console.error('Error creating group:', err);
       Alert.alert('Ошибка', err.response?.data?.detail || 'Не удалось создать группу');
