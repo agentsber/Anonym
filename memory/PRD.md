@@ -72,24 +72,37 @@ All screens now use consistent dark theme:
 - `app/security/lock.tsx` - Warning messages
 - `app/(tabs)/settings.tsx` - Toggle switch for auto-wipe
 
-### Certificate Pinning
-- Created modular certificate pinning system in `src/security/`
-- `certificatePinning.ts` - Core pinning logic with SHA-256 fingerprint validation
-- `securityManager.ts` - High-level security manager for initialization
-- Documentation at `docs/CERTIFICATE_PINNING.md`
-- UI indicator in Settings showing Certificate Pinning status
+## Admin Panel (Completed 2025-02-22)
 
-**Features:**
-- Configure multiple certificate fingerprints per host
-- Strict mode option for enforcing pinning
-- Auto-disabled in development mode (`__DEV__`)
-- Easy production configuration via `configureProductionCertificates()`
+### Features
+- **Dashboard:** Статистика пользователей, групп, сообщений
+- **Users Management:** Просмотр, бан/разбан, удаление пользователей
+- **Groups Management:** Просмотр и удаление групп
+- **Server Logs:** Просмотр логов в реальном времени
+- **System Info:** CPU, память, диск
+- **Backups:** Создание и просмотр резервных копий
 
-**Files created:**
-- `src/security/certificatePinning.ts`
-- `src/security/securityManager.ts`
-- `src/security/index.ts`
-- `docs/CERTIFICATE_PINNING.md`
+### Access
+- URL: `https://your-domain.com/admin`
+- Default credentials: `admin / admin123`
+- Credentials can be changed via env vars: `ADMIN_USERNAME`, `ADMIN_PASSWORD`
+
+### API Endpoints
+- `POST /api/admin/login` - Login
+- `GET /api/admin/stats` - Statistics
+- `GET /api/admin/users` - List users
+- `POST /api/admin/users/{id}/ban` - Ban user
+- `DELETE /api/admin/users/{id}` - Delete user
+- `GET /api/admin/groups` - List groups
+- `DELETE /api/admin/groups/{id}` - Delete group
+- `GET /api/admin/logs` - Server logs
+- `GET /api/admin/system` - System info
+- `POST /api/admin/backup` - Create backup
+- `GET /api/admin/backups` - List backups
+
+### Files
+- `/app/admin/index.html` - Admin panel SPA
+- `/app/backend/server.py` - Admin API endpoints
 
 ## Refactoring (Completed 2025-02-22)
 Файл `group/[groupId].tsx` был разбит на 12 компонентов в `/app/frontend/src/components/group-chat/`:
