@@ -97,7 +97,13 @@ export interface GroupMessage {
   sender_id: string;
   sender_username: string;
   content: string;
-  message_type: string;
+  message_type: 'text' | 'image' | 'sticker' | 'voice' | string;
   timestamp: string;
   reply_to_id?: string;
+  media_url?: string;
+  is_edited?: boolean;
+  is_pinned?: boolean;
+  is_deleted?: boolean;
+  is_forwarded?: boolean;
+  forwarded_from?: string;
 }
