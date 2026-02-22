@@ -512,25 +512,80 @@ export default function GroupChatScreen() {
         {!isOwn && (
           <Text style={styles.senderName}>{item.sender_username}</Text>
         )}
+
+        {/* Forwarded indicator */}
+        {item.is_forwarded && (
+          <View style={styles.forwardedIndicator}>
+            <Ionicons name="arrow-redo" size={12} color={COLORS.textSecondary} />
+            <Text style={styles.forwardedText}>Переслано от {item.forwarded_from}</Text>
+          </View>
+        )}
+        
+        {/* Sticker message */}
+        {item.message_type === 'sticker' && (
+          <Text style={styles.stickerMessage}>{item.content}</Text>
+        )}
+        
+        {/* Voice message */}
+        {item.message_type === 'voice' && (
+          <TouchableOpacity
+            style={styles.voiceMessage}
+            onPress={() => item.media_url && playVoiceMessage(item.media_url, item.id)}
+          >
+            <Ionicons 
+              name={playingVoice === item.id ? "pause" : "play"} 
+              size={24} 
+              color={isOwn ? "#FFF" : COLORS.primary} 
+            />
+            <View style={styles.voiceWaveform}>
+              {[...Array(12)].map((_, i) => (
+                <View 
+                  key={i} 
+                  style={[
+                    styles.voiceBar, 
+                    { 
+                      height: 8 + Math.random() * 16,
+                      backgroundColor: isOwn ? "#FFF" : COLORS.primary,
+                      opacity: playingVoice === item.id ? 1 : 0.5
+                    }
+                  ]} 
+                />
+              ))}
+            </View>
+            <Text style={[styles.voiceDuration, isOwn && { color: '#FFF' }]}>
+              {item.content.match(/\d+:\d+/)?.[0] || '0:00'}
+            </Text>
+          </TouchableOpacity>
+        )}
         
         {item.message_type === 'image' && item.media_url && (
           <Image source={{ uri: item.media_url }} style={styles.messageImage} />
         )}
         
-        <LinearGradient
-          colors={isOwn ? [COLORS.primary, COLORS.primaryLight] : [COLORS.surfaceLight, COLORS.surfaceLight]}
-          style={styles.messageBubble}
-        >
-          <Text style={styles.messageText}>{item.content}</Text>
-          <View style={styles.messageFooter}>
-            {item.is_edited && (
-              <Text style={styles.editedLabel}>ред.</Text>
-            )}
-            <Text style={styles.messageTime}>
-              {new Date(item.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-            </Text>
-          </View>
-        </LinearGradient>
+        {/* Regular text message */}
+        {item.message_type !== 'sticker' && item.message_type !== 'voice' && (
+          <LinearGradient
+            colors={isOwn ? [COLORS.primary, COLORS.primaryLight] : [COLORS.surfaceLight, COLORS.surfaceLight]}
+            style={styles.messageBubble}
+          >
+            <Text style={styles.messageText}>{item.content}</Text>
+            <View style={styles.messageFooter}>
+              {item.is_edited && (
+                <Text style={styles.editedLabel}>ред.</Text>
+              )}
+              <Text style={styles.messageTime}>
+                {new Date(item.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+            </View>
+          </LinearGradient>
+        )}
+        
+        {/* Time for stickers/voice */}
+        {(item.message_type === 'sticker' || item.message_type === 'voice') && (
+          <Text style={styles.messageTimeAlt}>
+            {new Date(item.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        )}
       </Pressable>
     );
   };
