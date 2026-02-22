@@ -54,8 +54,23 @@ All screens now use consistent dark theme:
 
 ## Future Tasks (Backlog)
 - [ ] **P2** Screenshot Protection: Implement `FLAG_SECURE` on Android
-- [ ] **P3** Data Wipe on Incorrect PIN: Track failed PIN attempts and wipe data after threshold
+- [x] **P3** Data Wipe on Incorrect PIN: Track failed PIN attempts and wipe data after threshold (COMPLETED - 2025-02-22)
 - [ ] **P3** Certificate Pinning: Enhanced security against MITM attacks
+
+## P3 Features Implemented (2025-02-22)
+
+### Data Wipe on Failed PIN Attempts
+- Added `isWipeEnabled` и `isDataWiped` states to securityStore
+- `enableWipeOnMaxAttempts()` function to toggle the feature
+- `wipeAllData()` function that clears all AsyncStorage data
+- Updated `verifyPin()` to trigger wipe after 5 failed attempts (if enabled)
+- UI toggle in Settings (shows only when PIN is set)
+- Warning messages in Lock screen when attempts are running low
+
+**Files updated:**
+- `src/stores/securityStore.ts` - Added wipe logic
+- `app/security/lock.tsx` - Warning messages
+- `app/(tabs)/settings.tsx` - Toggle switch for auto-wipe
 
 ## Refactoring (Completed 2025-02-22)
 Файл `group/[groupId].tsx` был разбит на 12 компонентов в `/app/frontend/src/components/group-chat/`:
