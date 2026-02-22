@@ -274,4 +274,25 @@ export const groupsApi = {
   },
 };
 
+// Forward API
+export const forwardApi = {
+  getTargets: async (userId: string) => {
+    const response = await api.get(`/forward/targets/${userId}`);
+    return response.data;
+  },
+
+  forwardMessage: async (data: {
+    sender_id: string;
+    original_message_id: string;
+    original_message_type: 'direct' | 'group';
+    target_type: 'user' | 'group';
+    target_id: string;
+    encrypted_content?: string;
+    ephemeral_key?: string;
+  }) => {
+    const response = await api.post('/messages/forward', data);
+    return response.data;
+  },
+};
+
 export default api;
