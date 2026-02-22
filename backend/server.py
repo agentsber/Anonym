@@ -55,6 +55,15 @@ async def admin_panel():
         return FileResponse(admin_path)
     return {"error": "Admin panel not found"}
 
+# Admin panel via /api prefix (for ingress routing)
+@app.get("/api/admin-panel")
+async def admin_panel_api():
+    """Serve admin panel via /api prefix"""
+    admin_path = Path("/app/admin/index.html")
+    if admin_path.exists():
+        return FileResponse(admin_path)
+    return {"error": "Admin panel not found"}
+
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
