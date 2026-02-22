@@ -36,7 +36,9 @@ export default function SettingsScreen() {
     isPinSet, 
     isBiometricEnabled, 
     isBiometricAvailable,
+    isWipeEnabled,
     enableBiometric,
+    enableWipeOnMaxAttempts,
     removePin 
   } = useSecurityStore();
 
@@ -108,6 +110,33 @@ export default function SettingsScreen() {
       return;
     }
     await enableBiometric(value);
+  };
+
+  const handleWipeToggle = async (value: boolean) => {
+    if (!isPinSet) {
+      Alert.alert('Внимание', 'Сначала установите PIN-код');
+      return;
+    }
+    
+    if (value) {
+      Alert.alert(
+        'Автоудаление данных',
+        'При 5 неверных попытках ввода PIN-кода ВСЕ данные приложения будут безвозвратно удалены. Включить?',
+        [
+          { text: 'Отмена', style: 'cancel' },
+          {
+            text: 'Включить',
+            style: 'destructive',
+            onPress: async () => {
+              await enableWipeOnMaxAttempts(true);
+            },
+          },
+        ]
+      );
+    } else {
+      await enableWipeOnMaxAttempts(false);
+    }
+  };
   };
 
   // Generate avatar color based on username
