@@ -1702,6 +1702,373 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
 async def api_health_check():
     return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
+# ==================== Admin API ====================
+
+# Admin credentials (in production, use environment variables)
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
+
+class AdminLogin(BaseModel):
+    username: str
+    password: str
+
+class AdminToken(BaseModel):
+    token: str
+    expires_at: datetime
+
+# Simple admin token storage (in production, use Redis or database)
+admin_tokens: Dict[str, datetime] = {}
+
+def generate_admin_token() -> str:
+    return secrets.token_urlsafe(32)
+
+def verify_admin_token(token: str) -> bool:
+    if token in admin_tokens:
+        if admin_tokens[token] > datetime.utcnow():
+            return True
+        else:
+            del admin_tokens[token]
+    return False
+
+@api_router.post("/admin/login")
+async def admin_login(credentials: AdminLogin):
+    """Admin login endpoint"""
+    if credentials.username == ADMIN_USERNAME and credentials.password == ADMIN_PASSWORD:
+        token = generate_admin_token()
+        expires_at = datetime.utcnow() + timedelta(hours=24)
+        admin_tokens[token] = expires_at
+        return {"token": token, "expires_at": expires_at.isoformat()}
+    raise HTTPException(status_code=401, detail="Invalid credentials")
+
+@api_router.get("/admin/verify")
+async def verify_admin(token: str):
+    """Verify admin token"""
+    if verify_admin_token(token):
+        return {"valid": True}
+    raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+@api_router.get("/admin/stats")
+async def get_admin_stats(token: str):
+    """Get system statistics"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    # Get counts
+    users_count = await db.users.count_documents({})
+    groups_count = await db.groups.count_documents({})
+    messages_count = await db.messages.count_documents({})
+    group_messages_count = await db.group_messages.count_documents({})
+    
+    # Get recent activity (last 24 hours)
+    yesterday = datetime.utcnow() - timedelta(days=1)
+    new_users_24h = await db.users.count_documents({"created_at": {"$gte": yesterday}})
+    new_messages_24h = await db.messages.count_documents({"timestamp": {"$gte": yesterday}})
+    new_group_messages_24h = await db.group_messages.count_documents({"timestamp": {"$gte": yesterday}})
+    
+    # Get last 7 days stats for chart
+    daily_stats = []
+    for i in range(7):
+        day_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=i)
+        day_end = day_start + timedelta(days=1)
+        
+        users = await db.users.count_documents({"created_at": {"$gte": day_start, "$lt": day_end}})
+        messages = await db.messages.count_documents({"timestamp": {"$gte": day_start, "$lt": day_end}})
+        
+        daily_stats.append({
+            "date": day_start.strftime("%Y-%m-%d"),
+            "users": users,
+            "messages": messages
+        })
+    
+    return {
+        "total": {
+            "users": users_count,
+            "groups": groups_count,
+            "direct_messages": messages_count,
+            "group_messages": group_messages_count,
+            "total_messages": messages_count + group_messages_count
+        },
+        "last_24h": {
+            "new_users": new_users_24h,
+            "new_messages": new_messages_24h + new_group_messages_24h
+        },
+        "daily_stats": list(reversed(daily_stats))
+    }
+
+@api_router.get("/admin/users")
+async def get_admin_users(token: str, skip: int = 0, limit: int = 50):
+    """Get all users for admin"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    users = await db.users.find({}, {"password_hash": 0}).skip(skip).limit(limit).to_list(limit)
+    total = await db.users.count_documents({})
+    
+    result = []
+    for user in users:
+        # Get message count for this user
+        msg_count = await db.messages.count_documents({
+            "$or": [{"sender_id": user["id"]}, {"receiver_id": user["id"]}]
+        })
+        
+        result.append({
+            "id": user["id"],
+            "username": user["username"],
+            "email": user["email"],
+            "created_at": user["created_at"].isoformat(),
+            "last_seen": user.get("last_seen", user["created_at"]).isoformat(),
+            "is_banned": user.get("is_banned", False),
+            "message_count": msg_count
+        })
+    
+    return {"users": result, "total": total}
+
+@api_router.post("/admin/users/{user_id}/ban")
+async def ban_user(user_id: str, token: str):
+    """Ban a user"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"is_banned": True, "banned_at": datetime.utcnow()}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    logger.info(f"User {user_id} banned by admin")
+    return {"success": True, "message": f"User {user_id} has been banned"}
+
+@api_router.post("/admin/users/{user_id}/unban")
+async def unban_user(user_id: str, token: str):
+    """Unban a user"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    result = await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"is_banned": False}, "$unset": {"banned_at": ""}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    logger.info(f"User {user_id} unbanned by admin")
+    return {"success": True, "message": f"User {user_id} has been unbanned"}
+
+@api_router.delete("/admin/users/{user_id}")
+async def delete_user(user_id: str, token: str):
+    """Delete a user and all their data"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    # Delete user
+    result = await db.users.delete_one({"id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Delete user's messages
+    await db.messages.delete_many({"$or": [{"sender_id": user_id}, {"receiver_id": user_id}]})
+    
+    # Remove from groups
+    await db.group_members.delete_many({"user_id": user_id})
+    
+    # Delete groups created by user
+    await db.groups.delete_many({"creator_id": user_id})
+    
+    logger.info(f"User {user_id} deleted by admin")
+    return {"success": True, "message": f"User {user_id} and all data deleted"}
+
+@api_router.get("/admin/groups")
+async def get_admin_groups(token: str, skip: int = 0, limit: int = 50):
+    """Get all groups for admin"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    groups = await db.groups.find({}).skip(skip).limit(limit).to_list(limit)
+    total = await db.groups.count_documents({})
+    
+    result = []
+    for group in groups:
+        member_count = await db.group_members.count_documents({"group_id": group["id"]})
+        msg_count = await db.group_messages.count_documents({"group_id": group["id"]})
+        
+        result.append({
+            "id": group["id"],
+            "name": group["name"],
+            "creator_id": group["creator_id"],
+            "created_at": group["created_at"].isoformat(),
+            "member_count": member_count,
+            "message_count": msg_count
+        })
+    
+    return {"groups": result, "total": total}
+
+@api_router.delete("/admin/groups/{group_id}")
+async def delete_group(group_id: str, token: str):
+    """Delete a group"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    # Delete group
+    result = await db.groups.delete_one({"id": group_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    # Delete group members
+    await db.group_members.delete_many({"group_id": group_id})
+    
+    # Delete group messages
+    await db.group_messages.delete_many({"group_id": group_id})
+    
+    logger.info(f"Group {group_id} deleted by admin")
+    return {"success": True, "message": f"Group {group_id} deleted"}
+
+@api_router.get("/admin/logs")
+async def get_admin_logs(token: str, limit: int = 100):
+    """Get recent server logs"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    # Read last N lines from log file
+    log_file = "/var/log/supervisor/backend.err.log"
+    logs = []
+    
+    try:
+        with open(log_file, 'r') as f:
+            lines = f.readlines()
+            logs = lines[-limit:] if len(lines) > limit else lines
+    except Exception as e:
+        logs = [f"Error reading logs: {str(e)}"]
+    
+    return {"logs": logs, "count": len(logs)}
+
+@api_router.get("/admin/system")
+async def get_system_info(token: str):
+    """Get system information"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    import platform
+    import psutil
+    
+    # Get system info
+    cpu_percent = psutil.cpu_percent(interval=1)
+    memory = psutil.virtual_memory()
+    disk = psutil.disk_usage('/')
+    
+    return {
+        "system": {
+            "platform": platform.system(),
+            "python_version": platform.python_version(),
+            "hostname": platform.node()
+        },
+        "cpu": {
+            "percent": cpu_percent,
+            "cores": psutil.cpu_count()
+        },
+        "memory": {
+            "total_gb": round(memory.total / (1024**3), 2),
+            "used_gb": round(memory.used / (1024**3), 2),
+            "percent": memory.percent
+        },
+        "disk": {
+            "total_gb": round(disk.total / (1024**3), 2),
+            "used_gb": round(disk.used / (1024**3), 2),
+            "percent": round(disk.percent, 1)
+        },
+        "database": {
+            "name": os.environ['DB_NAME'],
+            "status": "connected"
+        }
+    }
+
+@api_router.post("/admin/backup")
+async def create_backup(token: str):
+    """Create database backup"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    import subprocess
+    from datetime import datetime
+    
+    backup_dir = "/app/backups"
+    os.makedirs(backup_dir, exist_ok=True)
+    
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    backup_file = f"{backup_dir}/backup_{timestamp}.json"
+    
+    try:
+        # Export collections to JSON
+        backup_data = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "collections": {}
+        }
+        
+        # Export users (without passwords)
+        users = await db.users.find({}, {"password_hash": 0}).to_list(None)
+        backup_data["collections"]["users"] = [
+            {**u, "created_at": u["created_at"].isoformat(), "_id": str(u.get("_id", ""))} 
+            for u in users
+        ]
+        
+        # Export groups
+        groups = await db.groups.find({}).to_list(None)
+        backup_data["collections"]["groups"] = [
+            {**g, "created_at": g["created_at"].isoformat(), "_id": str(g.get("_id", ""))} 
+            for g in groups
+        ]
+        
+        # Export group members
+        members = await db.group_members.find({}).to_list(None)
+        backup_data["collections"]["group_members"] = [
+            {**m, "joined_at": m["joined_at"].isoformat() if "joined_at" in m else "", "_id": str(m.get("_id", ""))} 
+            for m in members
+        ]
+        
+        # Save to file
+        with open(backup_file, 'w') as f:
+            json.dump(backup_data, f, indent=2, default=str)
+        
+        logger.info(f"Backup created: {backup_file}")
+        
+        return {
+            "success": True,
+            "backup_file": backup_file,
+            "timestamp": timestamp,
+            "collections": list(backup_data["collections"].keys()),
+            "sizes": {k: len(v) for k, v in backup_data["collections"].items()}
+        }
+    except Exception as e:
+        logger.error(f"Backup failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Backup failed: {str(e)}")
+
+@api_router.get("/admin/backups")
+async def list_backups(token: str):
+    """List available backups"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    backup_dir = "/app/backups"
+    backups = []
+    
+    if os.path.exists(backup_dir):
+        for filename in os.listdir(backup_dir):
+            if filename.endswith('.json'):
+                filepath = os.path.join(backup_dir, filename)
+                stat = os.stat(filepath)
+                backups.append({
+                    "filename": filename,
+                    "size_kb": round(stat.st_size / 1024, 2),
+                    "created_at": datetime.fromtimestamp(stat.st_mtime).isoformat()
+                })
+    
+    return {"backups": sorted(backups, key=lambda x: x["created_at"], reverse=True)}
+
+# Import timedelta for admin token expiration
+from datetime import timedelta
+
 # Include the router in the main app
 app.include_router(api_router)
 
