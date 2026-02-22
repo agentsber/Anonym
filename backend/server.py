@@ -181,6 +181,37 @@ class ForwardMessageRequest(BaseModel):
     encrypted_content: Optional[str] = None
     ephemeral_key: Optional[str] = None
 
+# ==================== Sticker Models ====================
+
+class StickerPack(BaseModel):
+    id: str
+    name: str
+    stickers: List[str]  # List of sticker URLs/IDs
+
+# Default sticker packs (emoji-based for simplicity)
+DEFAULT_STICKER_PACKS = [
+    {
+        "id": "emotions",
+        "name": "Эмоции",
+        "stickers": ["😀", "😂", "🥰", "😍", "🤩", "😎", "🥳", "😢", "😭", "😤", "🤯", "🥺", "😱", "🤗", "🤔", "😴"]
+    },
+    {
+        "id": "gestures",
+        "name": "Жесты",
+        "stickers": ["👍", "👎", "👋", "🤝", "🙏", "💪", "✌️", "🤞", "👊", "🤟", "👏", "🙌", "❤️", "💔", "💯", "🔥"]
+    },
+    {
+        "id": "animals",
+        "name": "Животные",
+        "stickers": ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🐔"]
+    },
+    {
+        "id": "food",
+        "name": "Еда",
+        "stickers": ["🍕", "🍔", "🍟", "🌭", "🍿", "🧀", "🍳", "🥗", "🍜", "🍣", "🍰", "🎂", "🍩", "🍪", "☕", "🍺"]
+    }
+]
+
 class MessageEdit(BaseModel):
     encrypted_content: str
     ephemeral_key: str
