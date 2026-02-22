@@ -987,7 +987,7 @@ async def remove_group_member(group_id: str, member_id: str, admin_id: str):
 @api_router.post("/groups/{group_id}/messages")
 async def send_group_message(group_id: str, message: GroupMessageSend):
     """Send message to group"""
-    # Verify sender is member
+    # Verify sender is member and not banned
     membership = await db.group_members.find_one({
         "group_id": group_id,
         "user_id": message.sender_id
@@ -995,6 +995,14 @@ async def send_group_message(group_id: str, message: GroupMessageSend):
     
     if not membership:
         raise HTTPException(status_code=403, detail="You are not a member of this group")
+    
+    # Check if user is banned
+    ban = await db.group_bans.find_one({
+        "group_id": group_id,
+        "user_id": message.sender_id
+    })
+    if ban:
+        raise HTTPException(status_code=403, detail="You are banned from this group")
     
     # Get sender info
     sender = await db.users.find_one({"id": message.sender_id})
@@ -1009,8 +1017,12 @@ async def send_group_message(group_id: str, message: GroupMessageSend):
         "sender_username": sender["username"],
         "content": message.content,
         "message_type": message.message_type,
+        "media_url": message.media_url,
         "timestamp": datetime.utcnow(),
-        "reply_to_id": message.reply_to_id
+        "reply_to_id": message.reply_to_id,
+        "is_edited": False,
+        "is_pinned": False,
+        "is_deleted": False
     }
     
     await db.group_messages.insert_one(message_doc)
@@ -1028,21 +1040,27 @@ async def send_group_message(group_id: str, message: GroupMessageSend):
                     "sender_username": sender["username"],
                     "content": message.content,
                     "message_type": message.message_type,
+                    "media_url": message.media_url,
                     "timestamp": message_doc["timestamp"].isoformat(),
-                    "reply_to_id": message.reply_to_id
+                    "reply_to_id": message.reply_to_id,
+                    "is_edited": False,
+                    "is_pinned": False
                 }
             }, member["user_id"])
     
-    return GroupMessageResponse(
-        id=message_id,
-        group_id=group_id,
-        sender_id=message.sender_id,
-        sender_username=sender["username"],
-        content=message.content,
-        message_type=message.message_type,
-        timestamp=message_doc["timestamp"],
-        reply_to_id=message.reply_to_id
-    )
+    return {
+        "id": message_id,
+        "group_id": group_id,
+        "sender_id": message.sender_id,
+        "sender_username": sender["username"],
+        "content": message.content,
+        "message_type": message.message_type,
+        "media_url": message.media_url,
+        "timestamp": message_doc["timestamp"].isoformat(),
+        "reply_to_id": message.reply_to_id,
+        "is_edited": False,
+        "is_pinned": False
+    }
 
 @api_router.get("/groups/{group_id}/messages")
 async def get_group_messages(group_id: str, limit: int = 50, before: Optional[str] = None):
