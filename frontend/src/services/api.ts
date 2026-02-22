@@ -202,18 +202,74 @@ export const groupsApi = {
     return response.data;
   },
 
-  sendMessage: async (groupId: string, data: { sender_id: string; content: string; message_type?: string; reply_to_id?: string }) => {
+  sendMessage: async (groupId: string, data: { sender_id: string; content: string; message_type?: string; reply_to_id?: string; media_url?: string }) => {
     const response = await api.post(`/groups/${groupId}/messages`, { group_id: groupId, ...data });
     return response.data;
   },
 
-  getMessages: async (groupId: string, limit?: number, before?: string) => {
-    const response = await api.get(`/groups/${groupId}/messages`, { params: { limit, before } });
+  getMessages: async (groupId: string, limit?: number, before?: string, search?: string) => {
+    const response = await api.get(`/groups/${groupId}/messages`, { params: { limit, before, search } });
     return response.data;
   },
 
   deleteGroup: async (groupId: string, userId: string) => {
     const response = await api.delete(`/groups/${groupId}`, { params: { user_id: userId } });
+    return response.data;
+  },
+
+  // Edit message
+  editMessage: async (groupId: string, messageId: string, content: string, userId: string) => {
+    const response = await api.put(`/groups/${groupId}/messages/${messageId}`, { content }, { params: { user_id: userId } });
+    return response.data;
+  },
+
+  // Delete message
+  deleteMessage: async (groupId: string, messageId: string, userId: string) => {
+    const response = await api.delete(`/groups/${groupId}/messages/${messageId}`, { params: { user_id: userId } });
+    return response.data;
+  },
+
+  // Pin/Unpin message
+  pinMessage: async (groupId: string, messageId: string, userId: string) => {
+    const response = await api.post(`/groups/${groupId}/messages/${messageId}/pin`, null, { params: { user_id: userId } });
+    return response.data;
+  },
+
+  unpinMessage: async (groupId: string, messageId: string, userId: string) => {
+    const response = await api.delete(`/groups/${groupId}/messages/${messageId}/pin`, { params: { user_id: userId } });
+    return response.data;
+  },
+
+  getPinnedMessages: async (groupId: string) => {
+    const response = await api.get(`/groups/${groupId}/pinned`);
+    return response.data;
+  },
+
+  // Update member role
+  updateMemberRole: async (groupId: string, memberId: string, role: string, adminId: string) => {
+    const response = await api.put(`/groups/${groupId}/members/${memberId}/role`, { role }, { params: { admin_id: adminId } });
+    return response.data;
+  },
+
+  // Ban management
+  banMember: async (groupId: string, memberId: string, adminId: string, reason?: string) => {
+    const response = await api.post(`/groups/${groupId}/ban/${memberId}`, { reason }, { params: { admin_id: adminId } });
+    return response.data;
+  },
+
+  unbanMember: async (groupId: string, memberId: string, adminId: string) => {
+    const response = await api.delete(`/groups/${groupId}/ban/${memberId}`, { params: { admin_id: adminId } });
+    return response.data;
+  },
+
+  getBannedMembers: async (groupId: string, adminId: string) => {
+    const response = await api.get(`/groups/${groupId}/bans`, { params: { admin_id: adminId } });
+    return response.data;
+  },
+
+  // Search messages
+  searchMessages: async (groupId: string, query: string, limit?: number) => {
+    const response = await api.get(`/groups/${groupId}/search`, { params: { q: query, limit } });
     return response.data;
   },
 };
