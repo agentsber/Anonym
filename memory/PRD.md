@@ -55,7 +55,7 @@ All screens now use consistent dark theme:
 ## Future Tasks (Backlog)
 - [ ] **P2** Screenshot Protection: Implement `FLAG_SECURE` on Android
 - [x] **P3** Data Wipe on Incorrect PIN: Track failed PIN attempts and wipe data after threshold (COMPLETED - 2025-02-22)
-- [ ] **P3** Certificate Pinning: Enhanced security against MITM attacks
+- [x] **P3** Certificate Pinning: Enhanced security against MITM attacks (COMPLETED - 2025-02-22)
 
 ## P3 Features Implemented (2025-02-22)
 
@@ -71,6 +71,25 @@ All screens now use consistent dark theme:
 - `src/stores/securityStore.ts` - Added wipe logic
 - `app/security/lock.tsx` - Warning messages
 - `app/(tabs)/settings.tsx` - Toggle switch for auto-wipe
+
+### Certificate Pinning
+- Created modular certificate pinning system in `src/security/`
+- `certificatePinning.ts` - Core pinning logic with SHA-256 fingerprint validation
+- `securityManager.ts` - High-level security manager for initialization
+- Documentation at `docs/CERTIFICATE_PINNING.md`
+- UI indicator in Settings showing Certificate Pinning status
+
+**Features:**
+- Configure multiple certificate fingerprints per host
+- Strict mode option for enforcing pinning
+- Auto-disabled in development mode (`__DEV__`)
+- Easy production configuration via `configureProductionCertificates()`
+
+**Files created:**
+- `src/security/certificatePinning.ts`
+- `src/security/securityManager.ts`
+- `src/security/index.ts`
+- `docs/CERTIFICATE_PINNING.md`
 
 ## Refactoring (Completed 2025-02-22)
 Файл `group/[groupId].tsx` был разбит на 12 компонентов в `/app/frontend/src/components/group-chat/`:
