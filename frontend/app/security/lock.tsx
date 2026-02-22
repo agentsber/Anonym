@@ -10,10 +10,22 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSecurityStore } from '../../src/stores/securityStore';
 
 const PIN_LENGTH = 4;
 const MAX_ATTEMPTS = 5;
+
+const COLORS = {
+  background: '#0A0A0A',
+  surface: '#1A1A1A',
+  surfaceLight: '#252525',
+  primary: '#6C5CE7',
+  primaryLight: '#A29BFE',
+  text: '#FFFFFF',
+  textSecondary: '#8E8E93',
+  error: '#FF6B6B',
+};
 
 export default function LockScreen() {
   const router = useRouter();
@@ -116,7 +128,7 @@ export default function LockScreen() {
                   style={styles.keyButton}
                   onPress={handleBiometric}
                 >
-                  <Ionicons name="finger-print" size={28} color="#007AFF" />
+                  <Ionicons name="finger-print" size={28} color={COLORS.primary} />
                 </TouchableOpacity>
               );
             }
@@ -130,7 +142,7 @@ export default function LockScreen() {
                 style={styles.keyButton}
                 onPress={handleDelete}
               >
-                <Ionicons name="backspace-outline" size={28} color="#333" />
+                <Ionicons name="backspace-outline" size={28} color={COLORS.textSecondary} />
               </TouchableOpacity>
             );
           }
@@ -150,36 +162,44 @@ export default function LockScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="lock-closed" size={40} color="#007AFF" />
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.primaryLight]}
+              style={styles.iconContainer}
+            >
+              <Ionicons name="lock-closed" size={40} color="#FFF" />
+            </LinearGradient>
+            <Text style={styles.title}>Введите PIN-код</Text>
+            {error ? (
+              <Text style={styles.error}>{error}</Text>
+            ) : (
+              <Text style={styles.subtitle}>Для доступа к Anonym X</Text>
+            )}
           </View>
-          <Text style={styles.title}>Введите PIN-код</Text>
-          {error ? (
-            <Text style={styles.error}>{error}</Text>
-          ) : (
-            <Text style={styles.subtitle}>Для доступа к SecureChat</Text>
-          )}
+          
+          <View style={styles.dotsContainer}>
+            {renderDots()}
+          </View>
+          
+          <View style={styles.numPad}>
+            {renderNumberPad()}
+          </View>
         </View>
-        
-        <View style={styles.dotsContainer}>
-          {renderDots()}
-        </View>
-        
-        <View style={styles.numPad}>
-          {renderNumberPad()}
-        </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.background,
+  },
+  safeArea: {
+    flex: 1,
   },
   content: {
     flex: 1,
@@ -192,8 +212,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 80,
     height: 80,
-    borderRadius: 40,
-    backgroundColor: '#E8F4FF',
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -201,16 +220,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#000',
+    color: COLORS.text,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: COLORS.textSecondary,
   },
   error: {
     fontSize: 14,
-    color: '#FF3B30',
+    color: COLORS.error,
     textAlign: 'center',
     paddingHorizontal: 20,
   },
@@ -224,15 +243,15 @@ const styles = StyleSheet.create({
     height: 16,
     borderRadius: 8,
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: COLORS.primary,
     backgroundColor: 'transparent',
   },
   dotFilled: {
-    backgroundColor: '#007AFF',
+    backgroundColor: COLORS.primary,
   },
   dotError: {
-    borderColor: '#FF3B30',
-    backgroundColor: '#FF3B30',
+    borderColor: COLORS.error,
+    backgroundColor: COLORS.error,
   },
   numPad: {
     paddingHorizontal: 40,
@@ -246,13 +265,13 @@ const styles = StyleSheet.create({
     width: 75,
     height: 75,
     borderRadius: 40,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   keyText: {
     fontSize: 28,
     fontWeight: '500',
-    color: '#000',
+    color: COLORS.text,
   },
 });

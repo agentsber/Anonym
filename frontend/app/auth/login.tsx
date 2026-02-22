@@ -14,7 +14,22 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../src/stores/authStore';
+
+const COLORS = {
+  background: '#0A0A0A',
+  surface: '#1A1A1A',
+  surfaceLight: '#252525',
+  primary: '#6C5CE7',
+  primaryLight: '#A29BFE',
+  text: '#FFFFFF',
+  textSecondary: '#8E8E93',
+  textMuted: '#555555',
+  border: '#333333',
+  warning: '#FF9500',
+  error: '#FF6B6B',
+};
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -53,74 +68,94 @@ export default function LoginScreen() {
     }
   };
 
+  const canLogin = username.length >= 3 && !isLoading;
+
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.content}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="log-in" size={48} color="#007AFF" />
-            </View>
-            
-            <Text style={styles.title}>Добро пожаловать</Text>
-            <Text style={styles.description}>
-              Введите ваше имя пользователя.{`\n`}Ключи шифрования должны быть на этом устройстве.
-            </Text>
-            
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="имя пользователя"
-                placeholderTextColor="#999"
-                value={username}
-                onChangeText={handleUsernameChange}
-                autoCapitalize="none"
-                autoCorrect={false}
-                maxLength={30}
-              />
-            </View>
-            
-            {error && (
-              <Text style={styles.error}>{error}</Text>
-            )}
-            
-            <View style={styles.warning}>
-              <Ionicons name="warning-outline" size={20} color="#FF9500" />
-              <Text style={styles.warningText}>
-                Ключи шифрования хранятся локально. Если вы регистрировались на другом устройстве, вам нужно зарегистрироваться заново.
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          style={styles.keyboardView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView contentContainerStyle={styles.scrollContent}>
+            <View style={styles.content}>
+              <View style={styles.logoContainer}>
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.primaryLight]}
+                  style={styles.logoGradient}
+                >
+                  <Ionicons name="log-in" size={40} color="#FFF" />
+                </LinearGradient>
+              </View>
+              
+              <Text style={styles.title}>Добро пожаловать</Text>
+              <Text style={styles.description}>
+                Введите ваше имя пользователя.{'\n'}Ключи шифрования должны быть на этом устройстве.
               </Text>
+              
+              <View style={styles.inputContainer}>
+                <Ionicons name="at" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Имя пользователя"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={username}
+                  onChangeText={handleUsernameChange}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  maxLength={30}
+                />
+              </View>
+              
+              {error && (
+                <View style={styles.errorContainer}>
+                  <Ionicons name="alert-circle" size={16} color={COLORS.error} />
+                  <Text style={styles.error}>{error}</Text>
+                </View>
+              )}
+              
+              <View style={styles.warning}>
+                <Ionicons name="warning-outline" size={20} color={COLORS.warning} />
+                <Text style={styles.warningText}>
+                  Ключи шифрования хранятся локально. Если вы регистрировались на другом устройстве, вам нужно зарегистрироваться заново.
+                </Text>
+              </View>
             </View>
+          </ScrollView>
+          
+          <View style={styles.footer}>
+            <TouchableOpacity
+              style={[styles.button, !canLogin && styles.buttonDisabled]}
+              onPress={handleLogin}
+              disabled={!canLogin}
+            >
+              <LinearGradient
+                colors={canLogin ? [COLORS.primary, COLORS.primaryLight] : [COLORS.surfaceLight, COLORS.surfaceLight]}
+                style={styles.buttonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.buttonText}>Войти</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
-        </ScrollView>
-        
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.button,
-              (username.length < 3 || isLoading) && styles.buttonDisabled,
-            ]}
-            onPress={handleLogin}
-            disabled={username.length < 3 || isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.buttonText}>Войти</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.background,
+  },
+  safeArea: {
+    flex: 1,
   },
   keyboardView: {
     flex: 1,
@@ -131,68 +166,95 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingTop: 20,
   },
-  iconContainer: {
+  logoContainer: {
     alignItems: 'center',
     marginBottom: 24,
   },
+  logoGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
-    color: '#000',
+    color: COLORS.text,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   description: {
     fontSize: 16,
-    color: '#666',
+    color: COLORS.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
     marginBottom: 32,
+    lineHeight: 24,
   },
   inputContainer: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
     paddingHorizontal: 16,
+    marginBottom: 12,
+    height: 56,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
-    fontSize: 18,
-    paddingVertical: 16,
-    color: '#000',
+    flex: 1,
+    fontSize: 16,
+    color: COLORS.text,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 12,
+    gap: 8,
   },
   error: {
-    marginTop: 12,
-    color: '#FF3B30',
     fontSize: 14,
-    textAlign: 'center',
+    color: COLORS.error,
   },
   warning: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginTop: 24,
     padding: 16,
-    backgroundColor: '#FFF8E6',
+    backgroundColor: COLORS.surface,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.warning + '40',
   },
   warningText: {
     flex: 1,
     marginLeft: 12,
     fontSize: 14,
-    color: '#666',
+    color: COLORS.textSecondary,
     lineHeight: 20,
   },
   footer: {
     padding: 24,
+    paddingBottom: 16,
   },
   button: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   buttonDisabled: {
-    backgroundColor: '#B0D4FF',
+    opacity: 0.6,
+  },
+  buttonGradient: {
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   buttonText: {
     color: '#FFFFFF',

@@ -8,6 +8,13 @@ import { useSecurityStore } from '../src/stores/securityStore';
 
 const queryClient = new QueryClient();
 
+const COLORS = {
+  background: '#0A0A0A',
+  surface: '#1A1A1A',
+  primary: '#6C5CE7',
+  text: '#FFFFFF',
+};
+
 function RootLayoutContent() {
   const { initialize: initAuth, isInitialized: authInitialized, isLoading: authLoading, user } = useAuthStore();
   const { initialize: initSecurity, isInitialized: securityInitialized, isLocked, isPinSet, lock } = useSecurityStore();
@@ -34,20 +41,20 @@ function RootLayoutContent() {
   if (!authInitialized || !securityInitialized || authLoading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
 
   return (
     <>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: '#F8F8F8' },
-          headerTintColor: '#007AFF',
+          headerStyle: { backgroundColor: COLORS.background },
+          headerTintColor: COLORS.text,
           headerTitleStyle: { fontWeight: '600' },
-          contentStyle: { backgroundColor: '#FFFFFF' },
+          contentStyle: { backgroundColor: COLORS.background },
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
@@ -76,6 +83,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.background,
   },
 });
