@@ -1,57 +1,40 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
-  TextInput,
-  TouchableOpacity,
   FlatList,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Image,
+  TouchableOpacity,
+  Text,
   Alert,
-  Modal,
-  Pressable,
-  ScrollView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import { useAuthStore } from '../../src/stores/authStore';
-import { groupsApi, forwardApi, stickersApi, voiceApi } from '../../src/services/api';
+import { groupsApi, forwardApi, stickersApi } from '../../src/services/api';
 import { Group, GroupMessage } from '../../src/types';
 
-interface StickerPack {
-  id: string;
-  name: string;
-  stickers: string[];
-}
-
-const COLORS = {
-  background: '#0A0A0A',
-  surface: '#1A1A1A',
-  surfaceLight: '#252525',
-  primary: '#6C5CE7',
-  primaryLight: '#A29BFE',
-  success: '#00D9A5',
-  error: '#FF6B6B',
-  warning: '#FDA7DF',
-  text: '#FFFFFF',
-  textSecondary: '#8E8E93',
-  border: '#333333',
-};
-
-interface ForwardTarget {
-  type: 'user' | 'group';
-  id: string;
-  name: string;
-  avatar_letter?: string;
-  avatar_color?: string;
-  member_count?: number;
-}
+// Import refactored components
+import {
+  COLORS,
+  MessageItem,
+  MessageMenu,
+  InputToolbar,
+  ReplyBar,
+  EditBar,
+  RecordingBar,
+  StickerPanel,
+  PinnedMessagesModal,
+  ForwardModal,
+  SearchBar,
+  StickerPack,
+  ForwardTarget,
+  formatDuration,
+} from '../../src/components/group-chat';
 
 export default function GroupChatScreen() {
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
@@ -59,19 +42,26 @@ export default function GroupChatScreen() {
   const { user } = useAuthStore();
   const flatListRef = useRef<FlatList>(null);
   
+  // Core state
   const [group, setGroup] = useState<Group | null>(null);
   const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  
+  // Reply/Edit state
   const [replyTo, setReplyTo] = useState<GroupMessage | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<GroupMessage | null>(null);
   const [showMessageMenu, setShowMessageMenu] = useState(false);
   const [editingMessage, setEditingMessage] = useState<GroupMessage | null>(null);
   const [editText, setEditText] = useState('');
+  
+  // Search state
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<GroupMessage[]>([]);
+  
+  // Pinned/Forward state
   const [pinnedMessages, setPinnedMessages] = useState<GroupMessage[]>([]);
   const [showPinned, setShowPinned] = useState(false);
   const [showForward, setShowForward] = useState(false);
@@ -91,10 +81,9 @@ export default function GroupChatScreen() {
   const soundRef = useRef<Audio.Sound | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const isAdmin = group?.members?.some(
-    m => m.user_id === user?.id && m.role === 'admin'
-  );
+  const isAdmin = group?.members?.some(m => m.user_id === user?.id && m.role === 'admin');
 
+  // Effects
   useEffect(() => {
     loadGroupData();
     loadPinnedMessages();
@@ -102,12 +91,11 @@ export default function GroupChatScreen() {
     const interval = setInterval(loadMessages, 3000);
     return () => {
       clearInterval(interval);
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
-      }
+      if (soundRef.current) soundRef.current.unloadAsync();
     };
   }, [groupId]);
 
+  // Data loading functions
   const loadStickerPacks = async () => {
     try {
       const packs = await stickersApi.getPacks();
@@ -153,6 +141,7 @@ export default function GroupChatScreen() {
     }
   };
 
+  // Message actions
   const handleSend = async () => {
     if (!user || !groupId || !inputText.trim() || isSending) return;
     
@@ -205,11 +194,6 @@ export default function GroupChatScreen() {
     }
   };
 
-  const handleLongPress = (message: GroupMessage) => {
-    setSelectedMessage(message);
-    setShowMessageMenu(true);
-  };
-
   const handleReply = () => {
     if (selectedMessage) {
       setReplyTo(selectedMessage);
@@ -244,28 +228,24 @@ export default function GroupChatScreen() {
   const handleDelete = () => {
     if (!selectedMessage || !groupId || !user) return;
     
-    Alert.alert(
-      'Удалить сообщение',
-      'Вы уверены?',
-      [
-        { text: 'Отмена', style: 'cancel' },
-        {
-          text: 'Удалить',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await groupsApi.deleteMessage(groupId, selectedMessage.id, user.id);
-              setMessages(prev => prev.map(m =>
-                m.id === selectedMessage.id ? { ...m, content: 'Сообщение удалено', is_deleted: true } : m
-              ));
-              setShowMessageMenu(false);
-            } catch (err: any) {
-              Alert.alert('Ошибка', err.response?.data?.detail || 'Не удалось удалить');
-            }
-          },
+    Alert.alert('Удалить сообщение', 'Вы уверены?', [
+      { text: 'Отмена', style: 'cancel' },
+      {
+        text: 'Удалить',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await groupsApi.deleteMessage(groupId, selectedMessage.id, user.id);
+            setMessages(prev => prev.map(m =>
+              m.id === selectedMessage.id ? { ...m, content: 'Сообщение удалено', is_deleted: true } : m
+            ));
+            setShowMessageMenu(false);
+          } catch (err: any) {
+            Alert.alert('Ошибка', err.response?.data?.detail || 'Не удалось удалить');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handlePin = async () => {
@@ -354,14 +334,8 @@ export default function GroupChatScreen() {
         return;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      const { recording: newRecording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       
       setRecording(newRecording);
       setIsRecording(true);
@@ -393,9 +367,6 @@ export default function GroupChatScreen() {
       
       if (uri) {
         setIsSending(true);
-        
-        // For simplicity, send voice message as a text indicator
-        // In production, you would upload the file first
         const newMessage = await groupsApi.sendMessage(groupId, {
           sender_id: user.id,
           content: `🎤 Голосовое сообщение (${formatDuration(duration)})`,
@@ -434,16 +405,9 @@ export default function GroupChatScreen() {
     setRecordingDuration(0);
   };
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   const playVoiceMessage = async (mediaUrl: string, messageId: string) => {
     try {
       if (playingVoice === messageId) {
-        // Stop playing
         if (soundRef.current) {
           await soundRef.current.stopAsync();
           await soundRef.current.unloadAsync();
@@ -453,7 +417,6 @@ export default function GroupChatScreen() {
         return;
       }
 
-      // Stop any currently playing
       if (soundRef.current) {
         await soundRef.current.stopAsync();
         await soundRef.current.unloadAsync();
@@ -487,109 +450,7 @@ export default function GroupChatScreen() {
     }
   };
 
-  const renderMessage = ({ item }: { item: GroupMessage }) => {
-    const isOwn = item.sender_id === user?.id;
-    const replyMessage = item.reply_to_id ? messages.find(m => m.id === item.reply_to_id) : null;
-    
-    return (
-      <Pressable
-        onLongPress={() => handleLongPress(item)}
-        style={[styles.messageContainer, isOwn && styles.ownMessage]}
-      >
-        {item.is_pinned && (
-          <View style={styles.pinnedBadge}>
-            <Ionicons name="pin" size={12} color={COLORS.warning} />
-          </View>
-        )}
-        
-        {replyMessage && (
-          <View style={styles.replyPreview}>
-            <Text style={styles.replyName}>{replyMessage.sender_username}</Text>
-            <Text style={styles.replyText} numberOfLines={1}>{replyMessage.content}</Text>
-          </View>
-        )}
-        
-        {!isOwn && (
-          <Text style={styles.senderName}>{item.sender_username}</Text>
-        )}
-
-        {/* Forwarded indicator */}
-        {item.is_forwarded && (
-          <View style={styles.forwardedIndicator}>
-            <Ionicons name="arrow-redo" size={12} color={COLORS.textSecondary} />
-            <Text style={styles.forwardedText}>Переслано от {item.forwarded_from}</Text>
-          </View>
-        )}
-        
-        {/* Sticker message */}
-        {item.message_type === 'sticker' && (
-          <Text style={styles.stickerMessage}>{item.content}</Text>
-        )}
-        
-        {/* Voice message */}
-        {item.message_type === 'voice' && (
-          <TouchableOpacity
-            style={styles.voiceMessage}
-            onPress={() => item.media_url && playVoiceMessage(item.media_url, item.id)}
-          >
-            <Ionicons 
-              name={playingVoice === item.id ? "pause" : "play"} 
-              size={24} 
-              color={isOwn ? "#FFF" : COLORS.primary} 
-            />
-            <View style={styles.voiceWaveform}>
-              {[...Array(12)].map((_, i) => (
-                <View 
-                  key={i} 
-                  style={[
-                    styles.voiceBar, 
-                    { 
-                      height: 8 + Math.random() * 16,
-                      backgroundColor: isOwn ? "#FFF" : COLORS.primary,
-                      opacity: playingVoice === item.id ? 1 : 0.5
-                    }
-                  ]} 
-                />
-              ))}
-            </View>
-            <Text style={[styles.voiceDuration, isOwn && { color: '#FFF' }]}>
-              {item.content.match(/\d+:\d+/)?.[0] || '0:00'}
-            </Text>
-          </TouchableOpacity>
-        )}
-        
-        {item.message_type === 'image' && item.media_url && (
-          <Image source={{ uri: item.media_url }} style={styles.messageImage} />
-        )}
-        
-        {/* Regular text message */}
-        {item.message_type !== 'sticker' && item.message_type !== 'voice' && (
-          <LinearGradient
-            colors={isOwn ? [COLORS.primary, COLORS.primaryLight] : [COLORS.surfaceLight, COLORS.surfaceLight]}
-            style={styles.messageBubble}
-          >
-            <Text style={styles.messageText}>{item.content}</Text>
-            <View style={styles.messageFooter}>
-              {item.is_edited && (
-                <Text style={styles.editedLabel}>ред.</Text>
-              )}
-              <Text style={styles.messageTime}>
-                {new Date(item.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-              </Text>
-            </View>
-          </LinearGradient>
-        )}
-        
-        {/* Time for stickers/voice */}
-        {(item.message_type === 'sticker' || item.message_type === 'voice') && (
-          <Text style={styles.messageTimeAlt}>
-            {new Date(item.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-          </Text>
-        )}
-      </Pressable>
-    );
-  };
-
+  // Loading state
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -611,31 +472,20 @@ export default function GroupChatScreen() {
               onPress={() => router.push(`/group-manage/${groupId}`)}
             >
               <Text style={styles.headerName} numberOfLines={1}>{group?.name}</Text>
-              <Text style={styles.headerSubtitle}>
-                {group?.members?.length || 0} участников
-              </Text>
+              <Text style={styles.headerSubtitle}>{group?.members?.length || 0} участников</Text>
             </TouchableOpacity>
           ),
           headerRight: () => (
             <View style={styles.headerButtons}>
-              <TouchableOpacity 
-                style={styles.headerButton}
-                onPress={() => setShowSearch(!showSearch)}
-              >
+              <TouchableOpacity style={styles.headerButton} onPress={() => setShowSearch(!showSearch)}>
                 <Ionicons name="search" size={22} color={COLORS.text} />
               </TouchableOpacity>
               {pinnedMessages.length > 0 && (
-                <TouchableOpacity 
-                  style={styles.headerButton}
-                  onPress={() => setShowPinned(true)}
-                >
+                <TouchableOpacity style={styles.headerButton} onPress={() => setShowPinned(true)}>
                   <Ionicons name="pin" size={22} color={COLORS.warning} />
                 </TouchableOpacity>
               )}
-              <TouchableOpacity 
-                style={styles.headerButton}
-                onPress={() => router.push(`/group-manage/${groupId}`)}
-              >
+              <TouchableOpacity style={styles.headerButton} onPress={() => router.push(`/group-manage/${groupId}`)}>
                 <Ionicons name="ellipsis-vertical" size={22} color={COLORS.text} />
               </TouchableOpacity>
             </View>
@@ -643,42 +493,17 @@ export default function GroupChatScreen() {
         }}
       />
 
-      {/* Search Bar */}
       {showSearch && (
-        <View style={styles.searchBar}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Поиск сообщений..."
-            placeholderTextColor={COLORS.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearch}
-          />
-          <TouchableOpacity onPress={handleSearch}>
-            <Ionicons name="search" size={20} color={COLORS.primary} />
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Search Results */}
-      {showSearch && searchResults.length > 0 && (
-        <View style={styles.searchResults}>
-          <Text style={styles.searchResultsTitle}>Результаты ({searchResults.length})</Text>
-          {searchResults.slice(0, 5).map(msg => (
-            <TouchableOpacity 
-              key={msg.id} 
-              style={styles.searchResultItem}
-              onPress={() => {
-                setShowSearch(false);
-                setSearchResults([]);
-                // Scroll to message
-              }}
-            >
-              <Text style={styles.searchResultSender}>{msg.sender_username}</Text>
-              <Text style={styles.searchResultContent} numberOfLines={1}>{msg.content}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <SearchBar
+          query={searchQuery}
+          results={searchResults}
+          onChangeQuery={setSearchQuery}
+          onSearch={handleSearch}
+          onSelectResult={() => {
+            setShowSearch(false);
+            setSearchResults([]);
+          }}
+        />
       )}
 
       <KeyboardAvoidingView
@@ -689,280 +514,92 @@ export default function GroupChatScreen() {
         <FlatList
           ref={flatListRef}
           data={messages}
-          renderItem={renderMessage}
+          renderItem={({ item }) => (
+            <MessageItem
+              message={item}
+              currentUserId={user?.id || ''}
+              messages={messages}
+              playingVoice={playingVoice}
+              onLongPress={(msg) => {
+                setSelectedMessage(msg);
+                setShowMessageMenu(true);
+              }}
+              onPlayVoice={playVoiceMessage}
+            />
+          )}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.messagesList}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
         />
 
-        {/* Reply Preview */}
-        {replyTo && (
-          <View style={styles.replyBar}>
-            <View style={styles.replyContent}>
-              <Text style={styles.replyBarName}>{replyTo.sender_username}</Text>
-              <Text style={styles.replyBarText} numberOfLines={1}>{replyTo.content}</Text>
-            </View>
-            <TouchableOpacity onPress={() => setReplyTo(null)}>
-              <Ionicons name="close" size={20} color={COLORS.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        )}
+        {replyTo && <ReplyBar replyTo={replyTo} onCancel={() => setReplyTo(null)} />}
 
-        {/* Edit Mode */}
         {editingMessage && (
-          <View style={styles.editBar}>
-            <View style={styles.editContent}>
-              <Text style={styles.editLabel}>Редактирование</Text>
-              <TextInput
-                style={styles.editInput}
-                value={editText}
-                onChangeText={setEditText}
-                autoFocus
-              />
-            </View>
-            <TouchableOpacity onPress={() => setEditingMessage(null)}>
-              <Ionicons name="close" size={20} color={COLORS.error} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleSaveEdit} style={{ marginLeft: 12 }}>
-              <Ionicons name="checkmark" size={24} color={COLORS.success} />
-            </TouchableOpacity>
-          </View>
+          <EditBar
+            editText={editText}
+            onChangeText={setEditText}
+            onSave={handleSaveEdit}
+            onCancel={() => setEditingMessage(null)}
+          />
         )}
 
-        {/* Recording Bar */}
         {isRecording && (
-          <View style={styles.recordingBar}>
-            <TouchableOpacity style={styles.recordingCancel} onPress={cancelRecording}>
-              <Ionicons name="trash" size={24} color={COLORS.error} />
-            </TouchableOpacity>
-            <View style={styles.recordingInfo}>
-              <View style={styles.recordingDot} />
-              <Text style={styles.recordingTime}>{formatDuration(recordingDuration)}</Text>
-              <Text style={styles.recordingText}>Запись...</Text>
-            </View>
-            <TouchableOpacity style={styles.recordingStop} onPress={stopRecording}>
-              <Ionicons name="checkmark-circle" size={40} color={COLORS.success} />
-            </TouchableOpacity>
-          </View>
+          <RecordingBar
+            duration={recordingDuration}
+            onCancel={cancelRecording}
+            onStop={stopRecording}
+          />
         )}
 
-        {/* Input Bar */}
         {!editingMessage && !isRecording && (
-          <View style={styles.inputContainer}>
-            <TouchableOpacity style={styles.attachButton} onPress={handlePickImage}>
-              <Ionicons name="image" size={24} color={COLORS.primary} />
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.attachButton} onPress={() => setShowStickers(!showStickers)}>
-              <Ionicons name="happy" size={24} color={showStickers ? COLORS.warning : COLORS.primary} />
-            </TouchableOpacity>
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Сообщение..."
-              placeholderTextColor={COLORS.textSecondary}
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-            />
-            
-            {inputText.trim() ? (
-              <TouchableOpacity 
-                style={[styles.sendButton, isSending && styles.sendButtonDisabled]}
-                onPress={handleSend}
-                disabled={isSending}
-              >
-                {isSending ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <Ionicons name="send" size={20} color="#FFF" />
-                )}
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity 
-                style={styles.voiceButton}
-                onPress={startRecording}
-              >
-                <Ionicons name="mic" size={24} color={COLORS.primary} />
-              </TouchableOpacity>
-            )}
-          </View>
+          <InputToolbar
+            inputText={inputText}
+            isSending={isSending}
+            showStickers={showStickers}
+            onChangeText={setInputText}
+            onSend={handleSend}
+            onPickImage={handlePickImage}
+            onToggleStickers={() => setShowStickers(!showStickers)}
+            onStartRecording={startRecording}
+          />
         )}
 
-        {/* Stickers Panel */}
         {showStickers && (
-          <View style={styles.stickersPanel}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.stickerPackTabs}>
-              {stickerPacks.map((pack, index) => (
-                <TouchableOpacity
-                  key={pack.id}
-                  style={[styles.stickerPackTab, activePackIndex === index && styles.stickerPackTabActive]}
-                  onPress={() => setActivePackIndex(index)}
-                >
-                  <Text style={styles.stickerPackTabText}>{pack.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <View style={styles.stickersGrid}>
-              {stickerPacks[activePackIndex]?.stickers.map((sticker, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.stickerItem}
-                  onPress={() => handleSendSticker(sticker)}
-                >
-                  <Text style={styles.stickerEmoji}>{sticker}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+          <StickerPanel
+            stickerPacks={stickerPacks}
+            activePackIndex={activePackIndex}
+            onSelectPack={setActivePackIndex}
+            onSelectSticker={handleSendSticker}
+          />
         )}
       </KeyboardAvoidingView>
 
-      {/* Message Menu Modal */}
-      <Modal
+      <MessageMenu
         visible={showMessageMenu}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowMessageMenu(false)}
-      >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowMessageMenu(false)}>
-          <View style={styles.messageMenu}>
-            <TouchableOpacity style={styles.menuItem} onPress={handleReply}>
-              <Ionicons name="arrow-undo" size={20} color={COLORS.text} />
-              <Text style={styles.menuText}>Ответить</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.menuItem} onPress={handleForwardOpen}>
-              <Ionicons name="arrow-redo" size={20} color={COLORS.primary} />
-              <Text style={styles.menuText}>Переслать</Text>
-            </TouchableOpacity>
-            
-            {selectedMessage?.sender_id === user?.id && (
-              <TouchableOpacity style={styles.menuItem} onPress={handleEdit}>
-                <Ionicons name="pencil" size={20} color={COLORS.text} />
-                <Text style={styles.menuText}>Редактировать</Text>
-              </TouchableOpacity>
-            )}
-            
-            {isAdmin && (
-              <TouchableOpacity style={styles.menuItem} onPress={handlePin}>
-                <Ionicons name={selectedMessage?.is_pinned ? "pin-outline" : "pin"} size={20} color={COLORS.warning} />
-                <Text style={styles.menuText}>{selectedMessage?.is_pinned ? 'Открепить' : 'Закрепить'}</Text>
-              </TouchableOpacity>
-            )}
-            
-            {(selectedMessage?.sender_id === user?.id || isAdmin) && (
-              <TouchableOpacity style={styles.menuItem} onPress={handleDelete}>
-                <Ionicons name="trash" size={20} color={COLORS.error} />
-                <Text style={[styles.menuText, { color: COLORS.error }]}>Удалить</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </Pressable>
-      </Modal>
+        message={selectedMessage}
+        currentUserId={user?.id || ''}
+        isAdmin={isAdmin || false}
+        onClose={() => setShowMessageMenu(false)}
+        onReply={handleReply}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onPin={handlePin}
+        onForward={handleForwardOpen}
+      />
 
-      {/* Pinned Messages Modal */}
-      <Modal
+      <PinnedMessagesModal
         visible={showPinned}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowPinned(false)}
-      >
-        <View style={styles.pinnedModal}>
-          <View style={styles.pinnedHeader}>
-            <Text style={styles.pinnedTitle}>Закрепленные сообщения</Text>
-            <TouchableOpacity onPress={() => setShowPinned(false)}>
-              <Ionicons name="close" size={24} color={COLORS.text} />
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            data={pinnedMessages}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.pinnedItem}>
-                <Text style={styles.pinnedSender}>{item.sender_username}</Text>
-                <Text style={styles.pinnedContent}>{item.content}</Text>
-              </View>
-            )}
-          />
-        </View>
-      </Modal>
+        messages={pinnedMessages}
+        onClose={() => setShowPinned(false)}
+      />
 
-      {/* Forward Modal */}
-      <Modal
+      <ForwardModal
         visible={showForward}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowForward(false)}
-      >
-        <View style={styles.forwardModal}>
-          <View style={styles.forwardHeader}>
-            <Text style={styles.forwardTitle}>Переслать сообщение</Text>
-            <TouchableOpacity onPress={() => setShowForward(false)}>
-              <Ionicons name="close" size={24} color={COLORS.text} />
-            </TouchableOpacity>
-          </View>
-          
-          {isForwarding ? (
-            <ActivityIndicator color={COLORS.primary} style={{ marginTop: 40 }} />
-          ) : (
-            <ScrollView style={styles.forwardContent}>
-              {forwardTargets.groups.length > 0 && (
-                <>
-                  <Text style={styles.forwardSectionTitle}>Группы</Text>
-                  {forwardTargets.groups.map(target => (
-                    <TouchableOpacity
-                      key={target.id}
-                      style={styles.forwardItem}
-                      onPress={() => handleForward(target)}
-                    >
-                      <LinearGradient
-                        colors={[target.avatar_color || COLORS.primary, (target.avatar_color || COLORS.primary) + '99']}
-                        style={styles.forwardAvatar}
-                      >
-                        <Ionicons name="people" size={20} color="#FFF" />
-                      </LinearGradient>
-                      <View style={styles.forwardInfo}>
-                        <Text style={styles.forwardName}>{target.name}</Text>
-                        <Text style={styles.forwardSubtitle}>{target.member_count} участников</Text>
-                      </View>
-                      <Ionicons name="arrow-forward" size={20} color={COLORS.textSecondary} />
-                    </TouchableOpacity>
-                  ))}
-                </>
-              )}
-              
-              {forwardTargets.contacts.length > 0 && (
-                <>
-                  <Text style={styles.forwardSectionTitle}>Контакты</Text>
-                  {forwardTargets.contacts.map(target => (
-                    <TouchableOpacity
-                      key={target.id}
-                      style={styles.forwardItem}
-                      onPress={() => handleForward(target)}
-                    >
-                      <LinearGradient
-                        colors={[COLORS.surfaceLight, COLORS.surfaceLight]}
-                        style={styles.forwardAvatar}
-                      >
-                        <Text style={styles.forwardAvatarText}>{target.avatar_letter}</Text>
-                      </LinearGradient>
-                      <View style={styles.forwardInfo}>
-                        <Text style={styles.forwardName}>{target.name}</Text>
-                      </View>
-                      <Ionicons name="arrow-forward" size={20} color={COLORS.textSecondary} />
-                    </TouchableOpacity>
-                  ))}
-                </>
-              )}
-              
-              {forwardTargets.groups.length === 0 && forwardTargets.contacts.length === 0 && (
-                <Text style={styles.forwardEmpty}>Нет доступных получателей</Text>
-              )}
-            </ScrollView>
-          )}
-        </View>
-      </Modal>
+        targets={forwardTargets}
+        isForwarding={isForwarding}
+        onClose={() => setShowForward(false)}
+        onForward={handleForward}
+      />
     </View>
   );
 }
@@ -976,88 +613,5 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 12, color: COLORS.textSecondary },
   headerButtons: { flexDirection: 'row', gap: 8 },
   headerButton: { padding: 4 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, padding: 12, gap: 8 },
-  searchInput: { flex: 1, color: COLORS.text, fontSize: 15 },
-  searchResults: { backgroundColor: COLORS.surface, padding: 12 },
-  searchResultsTitle: { fontSize: 12, color: COLORS.textSecondary, marginBottom: 8 },
-  searchResultItem: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  searchResultSender: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
-  searchResultContent: { fontSize: 14, color: COLORS.text },
   messagesList: { padding: 16, paddingBottom: 8 },
-  messageContainer: { maxWidth: '80%', marginBottom: 12, alignSelf: 'flex-start' },
-  ownMessage: { alignSelf: 'flex-end' },
-  pinnedBadge: { position: 'absolute', top: -8, right: -8, zIndex: 1 },
-  senderName: { fontSize: 12, fontWeight: '600', color: COLORS.primary, marginBottom: 4 },
-  replyPreview: { backgroundColor: COLORS.surface, padding: 8, borderRadius: 8, marginBottom: 4, borderLeftWidth: 2, borderLeftColor: COLORS.primary },
-  replyName: { fontSize: 11, fontWeight: '600', color: COLORS.primary },
-  replyText: { fontSize: 12, color: COLORS.textSecondary },
-  messageBubble: { padding: 12, borderRadius: 16 },
-  messageText: { fontSize: 15, color: COLORS.text },
-  messageImage: { width: 200, height: 150, borderRadius: 12, marginBottom: 4 },
-  messageFooter: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 },
-  editedLabel: { fontSize: 10, color: COLORS.textSecondary, fontStyle: 'italic' },
-  messageTime: { fontSize: 10, color: COLORS.textSecondary },
-  replyBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, padding: 12, borderTopWidth: 1, borderTopColor: COLORS.border },
-  replyContent: { flex: 1 },
-  replyBarName: { fontSize: 12, fontWeight: '600', color: COLORS.primary },
-  replyBarText: { fontSize: 13, color: COLORS.textSecondary },
-  editBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, padding: 12, borderTopWidth: 1, borderTopColor: COLORS.border },
-  editContent: { flex: 1 },
-  editLabel: { fontSize: 11, color: COLORS.primary, fontWeight: '600' },
-  editInput: { fontSize: 15, color: COLORS.text, marginTop: 4 },
-  inputContainer: { flexDirection: 'row', alignItems: 'flex-end', padding: 12, backgroundColor: COLORS.surface, gap: 8 },
-  attachButton: { padding: 8 },
-  input: { flex: 1, backgroundColor: COLORS.surfaceLight, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, color: COLORS.text, fontSize: 15, maxHeight: 100 },
-  sendButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
-  sendButtonDisabled: { opacity: 0.5 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  messageMenu: { backgroundColor: COLORS.surface, borderRadius: 12, padding: 8, minWidth: 200 },
-  menuItem: { flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12 },
-  menuText: { fontSize: 15, color: COLORS.text },
-  pinnedModal: { flex: 1, backgroundColor: COLORS.background, marginTop: 100, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
-  pinnedHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  pinnedTitle: { fontSize: 18, fontWeight: '600', color: COLORS.text },
-  pinnedItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  pinnedSender: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
-  pinnedContent: { fontSize: 15, color: COLORS.text, marginTop: 4 },
-  forwardModal: { flex: 1, backgroundColor: COLORS.background, marginTop: 100, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
-  forwardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  forwardTitle: { fontSize: 18, fontWeight: '600', color: COLORS.text },
-  forwardContent: { flex: 1, padding: 16 },
-  forwardSectionTitle: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary, textTransform: 'uppercase', marginBottom: 12, marginTop: 8 },
-  forwardItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, padding: 12, borderRadius: 12, marginBottom: 8 },
-  forwardAvatar: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  forwardAvatarText: { fontSize: 18, fontWeight: '600', color: '#FFF' },
-  forwardInfo: { flex: 1 },
-  forwardName: { fontSize: 16, fontWeight: '600', color: COLORS.text },
-  forwardSubtitle: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
-  forwardEmpty: { fontSize: 15, color: COLORS.textSecondary, textAlign: 'center', marginTop: 40 },
-  // Forwarded indicator
-  forwardedIndicator: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
-  forwardedText: { fontSize: 11, color: COLORS.textSecondary, fontStyle: 'italic' },
-  // Stickers
-  stickerMessage: { fontSize: 48, lineHeight: 56 },
-  stickersPanel: { backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border, maxHeight: 250 },
-  stickerPackTabs: { flexDirection: 'row', padding: 8, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  stickerPackTab: { paddingHorizontal: 16, paddingVertical: 8, marginRight: 8, borderRadius: 16, backgroundColor: COLORS.surfaceLight },
-  stickerPackTabActive: { backgroundColor: COLORS.primary },
-  stickerPackTabText: { fontSize: 13, fontWeight: '600', color: COLORS.text },
-  stickersGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 8 },
-  stickerItem: { width: '12.5%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
-  stickerEmoji: { fontSize: 28 },
-  // Voice messages
-  voiceButton: { padding: 8 },
-  voiceMessage: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surfaceLight, padding: 12, borderRadius: 16, gap: 8 },
-  voiceWaveform: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 2 },
-  voiceBar: { width: 3, borderRadius: 2 },
-  voiceDuration: { fontSize: 12, color: COLORS.textSecondary, minWidth: 36 },
-  messageTimeAlt: { fontSize: 10, color: COLORS.textSecondary, marginTop: 4, alignSelf: 'flex-end' },
-  // Recording
-  recordingBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, padding: 12, borderTopWidth: 1, borderTopColor: COLORS.border },
-  recordingCancel: { padding: 8 },
-  recordingInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  recordingDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.error },
-  recordingTime: { fontSize: 18, fontWeight: '600', color: COLORS.text },
-  recordingText: { fontSize: 14, color: COLORS.textSecondary },
-  recordingStop: { padding: 4 },
 });
