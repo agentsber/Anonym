@@ -1,0 +1,3 @@
+{
+  "backend/tests/test_group_chat_api.py::TestHealthEndpoints::test_root_health": true
+}
