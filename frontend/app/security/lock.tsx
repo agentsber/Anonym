@@ -36,11 +36,20 @@ export default function LockScreen() {
     isBiometricAvailable,
     authenticateWithBiometric,
     failedAttempts,
+    isWipeEnabled,
+    isDataWiped,
   } = useSecurityStore();
   
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+
+  useEffect(() => {
+    // If data was wiped, redirect to welcome screen
+    if (isDataWiped) {
+      router.replace('/');
+    }
+  }, [isDataWiped]);
 
   useEffect(() => {
     // Try biometric on mount
@@ -75,12 +84,17 @@ export default function LockScreen() {
         if (Platform.OS !== 'web') {
           Vibration.vibrate(200);
         }
-        setError(`Неверный PIN. Осталось попыток: ${MAX_ATTEMPTS - failedAttempts - 1}`);
-        setPin('');
         
-        if (failedAttempts + 1 >= MAX_ATTEMPTS) {
-          setError('Превышено число попыток. Данные могут быть удалены.');
+        const remainingAttempts = MAX_ATTEMPTS - failedAttempts - 1;
+        
+        if (remainingAttempts <= 0 && isWipeEnabled) {
+          setError('Данные удалены. Перезапустите приложение.');
+        } else if (remainingAttempts <= 2 && isWipeEnabled) {
+          setError(`⚠️ Внимание! Осталось ${remainingAttempts} попыток. Данные будут удалены!`);
+        } else {
+          setError(`Неверный PIN. Осталось попыток: ${remainingAttempts}`);
         }
+        setPin('');
       }
       setIsVerifying(false);
     }
