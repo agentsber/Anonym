@@ -67,7 +67,6 @@
   "expo": {
     "install": {
       "exclude": [
-        "react-native-reanimated",
         "react-native-gesture-handler",
         "react-native-safe-area-context",
         "react-native-screens"
