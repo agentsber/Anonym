@@ -13,13 +13,14 @@ import {
   Alert,
   Modal,
   Pressable,
+  ScrollView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/stores/authStore';
-import { groupsApi } from '../../src/services/api';
+import { groupsApi, forwardApi } from '../../src/services/api';
 import { Group, GroupMessage } from '../../src/types';
 
 const COLORS = {
@@ -35,6 +36,15 @@ const COLORS = {
   textSecondary: '#8E8E93',
   border: '#333333',
 };
+
+interface ForwardTarget {
+  type: 'user' | 'group';
+  id: string;
+  name: string;
+  avatar_letter?: string;
+  avatar_color?: string;
+  member_count?: number;
+}
 
 export default function GroupChatScreen() {
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
