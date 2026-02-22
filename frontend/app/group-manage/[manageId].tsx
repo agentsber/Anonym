@@ -179,12 +179,88 @@ export default function GroupManageScreen() {
     );
   };
 
+  const handleToggleAdmin = (memberId: string, currentRole: string, username: string) => {
+    const newRole = currentRole === 'admin' ? 'member' : 'admin';
+    const actionText = newRole === 'admin' ? 'назначить администратором' : 'снять права администратора';
+    
+    Alert.alert(
+      newRole === 'admin' ? 'Назначить администратором' : 'Снять права администратора',
+      `Вы уверены, что хотите ${actionText} ${username}?`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Подтвердить',
+          onPress: async () => {
+            if (!manageId || !user) return;
+            try {
+              await groupsApi.updateMemberRole(manageId, memberId, newRole, user.id);
+              loadGroupData();
+              Alert.alert('Успешно', newRole === 'admin' ? 'Пользователь назначен администратором' : 'Права администратора сняты');
+            } catch (err: any) {
+              Alert.alert('Ошибка', err.response?.data?.detail || 'Не удалось изменить роль');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleBanMember = (memberId: string, username: string) => {
+    Alert.alert(
+      'Заблокировать участника',
+      `Заблокировать ${username}? Он не сможет вернуться в группу.`,
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Заблокировать',
+          style: 'destructive',
+          onPress: async () => {
+            if (!manageId || !user) return;
+            try {
+              await groupsApi.banMember(manageId, memberId, user.id);
+              loadGroupData();
+              Alert.alert('Готово', `${username} заблокирован`);
+            } catch (err: any) {
+              Alert.alert('Ошибка', err.response?.data?.detail || 'Не удалось заблокировать');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleMemberPress = (member: GroupMember) => {
+    if (!isAdmin || member.user_id === user?.id || member.user_id === group?.creator_id) return;
+    
+    Alert.alert(
+      member.username,
+      'Выберите действие',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: member.role === 'admin' ? 'Снять админа' : 'Назначить админом',
+          onPress: () => handleToggleAdmin(member.user_id, member.role, member.username),
+        },
+        {
+          text: 'Заблокировать',
+          style: 'destructive',
+          onPress: () => handleBanMember(member.user_id, member.username),
+        },
+      ]
+    );
+  };
+
   const renderMember = ({ item }: { item: GroupMember }) => {
     const isCurrentUser = item.user_id === user?.id;
-    const canRemove = isAdmin && !isCurrentUser && item.user_id !== group?.creator_id;
+    const canManage = isAdmin && !isCurrentUser && item.user_id !== group?.creator_id;
     
     return (
-      <View style={styles.memberItem} data-testid={`member-${item.user_id}`}>
+      <TouchableOpacity 
+        style={styles.memberItem} 
+        onPress={() => handleMemberPress(item)}
+        disabled={!canManage}
+        data-testid={`member-${item.user_id}`}
+      >
         <LinearGradient
           colors={item.role === 'admin' ? [COLORS.primary, COLORS.primaryLight] : [COLORS.surfaceLight, COLORS.surfaceLight]}
           style={styles.memberAvatar}
@@ -198,22 +274,17 @@ export default function GroupManageScreen() {
           <Text style={styles.memberName}>
             {item.username}
             {isCurrentUser && ' (Вы)'}
+            {item.user_id === group?.creator_id && ' (Создатель)'}
           </Text>
           <Text style={styles.memberRole}>
             {item.role === 'admin' ? 'Администратор' : 'Участник'}
           </Text>
         </View>
         
-        {canRemove && (
-          <TouchableOpacity
-            style={styles.removeButton}
-            onPress={() => handleRemoveMember(item.user_id, item.username)}
-            data-testid={`remove-member-${item.user_id}`}
-          >
-            <Ionicons name="close-circle" size={24} color={COLORS.error} />
-          </TouchableOpacity>
+        {canManage && (
+          <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
         )}
-      </View>
+      </TouchableOpacity>
     );
   };
 
