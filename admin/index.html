@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anonym X - Админ панель</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg: #0A0A0A;
+            --surface: #1A1A1A;
+            --surface-light: #252525;
+            --primary: #6C5CE7;
+            --primary-light: #A29BFE;
+            --success: #00D9A5;
+            --error: #FF6B6B;
+            --warning: #FDA7DF;
+            --text: #FFFFFF;
+            --text-secondary: #8E8E93;
+            --border: #333333;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .login-card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 400px;
+            width: 100%;
+        }
+        
+        .login-logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+        }
+        
+        .login-logo i { font-size: 36px; color: white; }
+        
+        .login-title {
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        
+        .login-subtitle {
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-label {
+            display: block;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--surface-light);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        .form-input:focus {
+            border-color: var(--primary);
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        
+        .btn:hover { opacity: 0.9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .error-message {
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid var(--error);
+            color: var(--error);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        
+        /* Dashboard styles */
+        .dashboard {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        .sidebar {
+            width: 260px;
+            background: var(--surface);
+            padding: 20px;
+            border-right: 1px solid var(--border);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+        
+        .sidebar-logo-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .sidebar-logo-icon i { color: white; font-size: 20px; }
+        
+        .sidebar-logo-text {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 4px;
+        }
+        
+        .nav-item:hover { background: var(--surface-light); color: var(--text); }
+        .nav-item.active { background: var(--primary); color: white; }
+        .nav-item i { width: 20px; text-align: center; }
+        
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            padding: 24px;
+        }
+        
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        
+        .page-title { font-size: 24px; font-weight: 600; }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .stat-card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        
+        .stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .stat-icon i { font-size: 20px; color: white; }
+        .stat-icon.primary { background: var(--primary); }
+        .stat-icon.success { background: var(--success); }
+        .stat-icon.warning { background: var(--warning); }
+        .stat-icon.error { background: var(--error); }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            margin-top: 12px;
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+        
+        .card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .card-title { font-size: 16px; font-weight: 600; }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .table th, .table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .table th {
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        
+        .table tr:hover { background: var(--surface-light); }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .badge-success { background: rgba(0, 217, 165, 0.2); color: var(--success); }
+        .badge-error { background: rgba(255, 107, 107, 0.2); color: var(--error); }
+        
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 4px;
+        }
+        
+        .action-btn.danger { background: var(--error); color: white; }
+        .action-btn.primary { background: var(--primary); color: white; }
+        
+        .logs-container {
+            background: var(--surface-light);
+            border-radius: 8px;
+            padding: 16px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .log-line { color: var(--text-secondary); }
+        .log-line.error { color: var(--error); }
+        .log-line.info { color: var(--success); }
+        
+        .system-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: var(--surface-light);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        
+        .progress-fill.primary { background: var(--primary); }
+        .progress-fill.success { background: var(--success); }
+        .progress-fill.warning { background: var(--warning); }
+        .progress-fill.error { background: var(--error); }
+        
+        .logout-btn {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            padding: 12px;
+            background: var(--surface-light);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .logout-btn:hover { background: var(--error); color: white; border-color: var(--error); }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--surface-light);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const API_URL = window.location.origin + '/api';
+        
+        // Login Component
+        function Login({ onLogin }) {
+            const [username, setUsername] = React.useState('');
+            const [password, setPassword] = React.useState('');
+            const [error, setError] = React.useState('');
+            const [loading, setLoading] = React.useState(false);
+            
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setError('');
+                setLoading(true);
+                
+                try {
+                    const res = await fetch(`${API_URL}/admin/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    });
+                    
+                    if (res.ok) {
+                        const data = await res.json();
+                        localStorage.setItem('adminToken', data.token);
+                        onLogin(data.token);
+                    } else {
+                        setError('Неверный логин или пароль');
+                    }
+                } catch (err) {
+                    setError('Ошибка подключения к серверу');
+                }
+                
+                setLoading(false);
+            };
+            
+            return (
+                <div className="login-container">
+                    <div className="login-card">
+                        <div className="login-logo">
+                            <i className="fas fa-shield-halved"></i>
+                        </div>
+                        <h1 className="login-title">Anonym X Admin</h1>
+                        <p className="login-subtitle">Панель администратора</p>
+                        
+                        {error && <div className="error-message">{error}</div>}
+                        
+                        <form onSubmit={handleSubmit}>
+                            <div className="form-group">
+                                <label className="form-label">Логин</label>
+                                <input 
+                                    type="text" 
+                                    className="form-input"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Пароль</label>
+                                <input 
+                                    type="password" 
+                                    className="form-input"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <button type="submit" className="btn" disabled={loading}>
+                                {loading ? 'Вход...' : 'Войти'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+        
+        // Dashboard Component
+        function Dashboard({ token, onLogout }) {
+            const [page, setPage] = React.useState('overview');
+            const [stats, setStats] = React.useState(null);
+            const [users, setUsers] = React.useState([]);
+            const [groups, setGroups] = React.useState([]);
+            const [logs, setLogs] = React.useState([]);
+            const [system, setSystem] = React.useState(null);
+            const [backups, setBackups] = React.useState([]);
+            const [loading, setLoading] = React.useState(true);
+            
+            const fetchData = async (endpoint) => {
+                const res = await fetch(`${API_URL}/admin/${endpoint}?token=${token}`);
+                if (res.status === 401) {
+                    onLogout();
+                    return null;
+                }
+                return res.json();
+            };
+            
+            const loadData = async () => {
+                setLoading(true);
+                
+                if (page === 'overview') {
+                    const data = await fetchData('stats');
+                    if (data) setStats(data);
+                } else if (page === 'users') {
+                    const data = await fetchData('users');
+                    if (data) setUsers(data.users);
+                } else if (page === 'groups') {
+                    const data = await fetchData('groups');
+                    if (data) setGroups(data.groups);
+                } else if (page === 'logs') {
+                    const data = await fetchData('logs');
+                    if (data) setLogs(data.logs);
+                } else if (page === 'system') {
+                    const [sysData, backupsData] = await Promise.all([
+                        fetchData('system'),
+                        fetchData('backups')
+                    ]);
+                    if (sysData) setSystem(sysData);
+                    if (backupsData) setBackups(backupsData.backups);
+                }
+                
+                setLoading(false);
+            };
+            
+            React.useEffect(() => { loadData(); }, [page]);
+            
+            const banUser = async (userId) => {
+                if (!confirm('Заблокировать пользователя?')) return;
+                await fetch(`${API_URL}/admin/users/${userId}/ban?token=${token}`, { method: 'POST' });
+                loadData();
+            };
+            
+            const unbanUser = async (userId) => {
+                await fetch(`${API_URL}/admin/users/${userId}/unban?token=${token}`, { method: 'POST' });
+                loadData();
+            };
+            
+            const deleteUser = async (userId) => {
+                if (!confirm('Удалить пользователя? Это действие необратимо!')) return;
+                await fetch(`${API_URL}/admin/users/${userId}?token=${token}`, { method: 'DELETE' });
+                loadData();
+            };
+            
+            const deleteGroup = async (groupId) => {
+                if (!confirm('Удалить группу?')) return;
+                await fetch(`${API_URL}/admin/groups/${groupId}?token=${token}`, { method: 'DELETE' });
+                loadData();
+            };
+            
+            const createBackup = async () => {
+                setLoading(true);
+                await fetch(`${API_URL}/admin/backup?token=${token}`, { method: 'POST' });
+                loadData();
+            };
+            
+            const renderContent = () => {
+                if (loading) {
+                    return <div className="loading"><div className="spinner"></div></div>;
+                }
+                
+                switch (page) {
+                    case 'overview':
+                        return (
+                            <>
+                                <div className="stats-grid">
+                                    <div className="stat-card">
+                                        <div className="stat-header">
+                                            <div>
+                                                <div className="stat-value">{stats?.total?.users || 0}</div>
+                                                <div className="stat-label">Пользователей</div>
+                                            </div>
+                                            <div className="stat-icon primary"><i className="fas fa-users"></i></div>
+                                        </div>
+                                    </div>
+                                    <div className="stat-card">
+                                        <div className="stat-header">
+                                            <div>
+                                                <div className="stat-value">{stats?.total?.groups || 0}</div>
+                                                <div className="stat-label">Групп</div>
+                                            </div>
+                                            <div className="stat-icon success"><i className="fas fa-users-rectangle"></i></div>
+                                        </div>
+                                    </div>
+                                    <div className="stat-card">
+                                        <div className="stat-header">
+                                            <div>
+                                                <div className="stat-value">{stats?.total?.total_messages || 0}</div>
+                                                <div className="stat-label">Сообщений</div>
+                                            </div>
+                                            <div className="stat-icon warning"><i className="fas fa-comments"></i></div>
+                                        </div>
+                                    </div>
+                                    <div className="stat-card">
+                                        <div className="stat-header">
+                                            <div>
+                                                <div className="stat-value">+{stats?.last_24h?.new_users || 0}</div>
+                                                <div className="stat-label">Новых за 24ч</div>
+                                            </div>
+                                            <div className="stat-icon error"><i className="fas fa-user-plus"></i></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="card">
+                                    <div className="card-header">
+                                        <span className="card-title">Активность за 7 дней</span>
+                                    </div>
+                                    <table className="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Дата</th>
+                                                <th>Новые пользователи</th>
+                                                <th>Сообщений</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {stats?.daily_stats?.map((day, i) => (
+                                                <tr key={i}>
+                                                    <td>{day.date}</td>
+                                                    <td>{day.users}</td>
+                                                    <td>{day.messages}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
+                        );
+                        
+                    case 'users':
+                        return (
+                            <div className="card">
+                                <div className="card-header">
+                                    <span className="card-title">Пользователи ({users.length})</span>
+                                </div>
+                                <table className="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Имя</th>
+                                            <th>Email</th>
+                                            <th>Регистрация</th>
+                                            <th>Сообщений</th>
+                                            <th>Статус</th>
+                                            <th>Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {users.map(user => (
+                                            <tr key={user.id}>
+                                                <td>@{user.username}</td>
+                                                <td>{user.email}</td>
+                                                <td>{new Date(user.created_at).toLocaleDateString()}</td>
+                                                <td>{user.message_count}</td>
+                                                <td>
+                                                    <span className={`badge ${user.is_banned ? 'badge-error' : 'badge-success'}`}>
+                                                        {user.is_banned ? 'Заблокирован' : 'Активен'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {user.is_banned ? (
+                                                        <button className="action-btn primary" onClick={() => unbanUser(user.id)}>
+                                                            Разбан
+                                                        </button>
+                                                    ) : (
+                                                        <button className="action-btn danger" onClick={() => banUser(user.id)}>
+                                                            Бан
+                                                        </button>
+                                                    )}
+                                                    <button className="action-btn danger" onClick={() => deleteUser(user.id)}>
+                                                        Удалить
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        );
+                        
+                    case 'groups':
+                        return (
+                            <div className="card">
+                                <div className="card-header">
+                                    <span className="card-title">Группы ({groups.length})</span>
+                                </div>
+                                <table className="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Название</th>
+                                            <th>Участников</th>
+                                            <th>Сообщений</th>
+                                            <th>Создана</th>
+                                            <th>Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {groups.map(group => (
+                                            <tr key={group.id}>
+                                                <td>{group.name}</td>
+                                                <td>{group.member_count}</td>
+                                                <td>{group.message_count}</td>
+                                                <td>{new Date(group.created_at).toLocaleDateString()}</td>
+                                                <td>
+                                                    <button className="action-btn danger" onClick={() => deleteGroup(group.id)}>
+                                                        Удалить
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        );
+                        
+                    case 'logs':
+                        return (
+                            <div className="card">
+                                <div className="card-header">
+                                    <span className="card-title">Логи сервера</span>
+                                    <button className="action-btn primary" onClick={loadData}>
+                                        <i className="fas fa-refresh"></i> Обновить
+                                    </button>
+                                </div>
+                                <div className="logs-container">
+                                    {logs.map((line, i) => (
+                                        <div key={i} className={`log-line ${line.includes('ERROR') ? 'error' : line.includes('INFO') ? 'info' : ''}`}>
+                                            {line}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                        
+                    case 'system':
+                        return (
+                            <>
+                                <div className="system-grid">
+                                    <div className="card">
+                                        <div className="card-title">CPU</div>
+                                        <div className="stat-value">{system?.cpu?.percent}%</div>
+                                        <div className="stat-label">{system?.cpu?.cores} ядер</div>
+                                        <div className="progress-bar">
+                                            <div className="progress-fill primary" style={{width: `${system?.cpu?.percent}%`}}></div>
+                                        </div>
+                                    </div>
+                                    <div className="card">
+                                        <div className="card-title">Память</div>
+                                        <div className="stat-value">{system?.memory?.percent}%</div>
+                                        <div className="stat-label">{system?.memory?.used_gb} / {system?.memory?.total_gb} GB</div>
+                                        <div className="progress-bar">
+                                            <div className="progress-fill success" style={{width: `${system?.memory?.percent}%`}}></div>
+                                        </div>
+                                    </div>
+                                    <div className="card">
+                                        <div className="card-title">Диск</div>
+                                        <div className="stat-value">{system?.disk?.percent}%</div>
+                                        <div className="stat-label">{system?.disk?.used_gb} / {system?.disk?.total_gb} GB</div>
+                                        <div className="progress-bar">
+                                            <div className="progress-fill warning" style={{width: `${system?.disk?.percent}%`}}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="card">
+                                    <div className="card-header">
+                                        <span className="card-title">Резервные копии</span>
+                                        <button className="action-btn primary" onClick={createBackup}>
+                                            <i className="fas fa-download"></i> Создать бэкап
+                                        </button>
+                                    </div>
+                                    <table className="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Файл</th>
+                                                <th>Размер</th>
+                                                <th>Дата</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {backups.map((backup, i) => (
+                                                <tr key={i}>
+                                                    <td>{backup.filename}</td>
+                                                    <td>{backup.size_kb} KB</td>
+                                                    <td>{new Date(backup.created_at).toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
+                        );
+                }
+            };
+            
+            return (
+                <div className="dashboard">
+                    <div className="sidebar">
+                        <div className="sidebar-logo">
+                            <div className="sidebar-logo-icon">
+                                <i className="fas fa-shield-halved"></i>
+                            </div>
+                            <span className="sidebar-logo-text">Anonym X</span>
+                        </div>
+                        
+                        <div className="nav-item" onClick={() => setPage('overview')} className={`nav-item ${page === 'overview' ? 'active' : ''}`}>
+                            <i className="fas fa-chart-line"></i>
+                            <span>Обзор</span>
+                        </div>
+                        <div onClick={() => setPage('users')} className={`nav-item ${page === 'users' ? 'active' : ''}`}>
+                            <i className="fas fa-users"></i>
+                            <span>Пользователи</span>
+                        </div>
+                        <div onClick={() => setPage('groups')} className={`nav-item ${page === 'groups' ? 'active' : ''}`}>
+                            <i className="fas fa-users-rectangle"></i>
+                            <span>Группы</span>
+                        </div>
+                        <div onClick={() => setPage('logs')} className={`nav-item ${page === 'logs' ? 'active' : ''}`}>
+                            <i className="fas fa-terminal"></i>
+                            <span>Логи</span>
+                        </div>
+                        <div onClick={() => setPage('system')} className={`nav-item ${page === 'system' ? 'active' : ''}`}>
+                            <i className="fas fa-server"></i>
+                            <span>Система</span>
+                        </div>
+                        
+                        <button className="logout-btn" onClick={onLogout}>
+                            <i className="fas fa-sign-out-alt"></i>
+                            <span>Выйти</span>
+                        </button>
+                    </div>
+                    
+                    <div className="main-content">
+                        <div className="page-header">
+                            <h1 className="page-title">
+                                {page === 'overview' && 'Обзор'}
+                                {page === 'users' && 'Пользователи'}
+                                {page === 'groups' && 'Группы'}
+                                {page === 'logs' && 'Логи сервера'}
+                                {page === 'system' && 'Система'}
+                            </h1>
+                        </div>
+                        {renderContent()}
+                    </div>
+                </div>
+            );
+        }
+        
+        // Main App
+        function App() {
+            const [token, setToken] = React.useState(localStorage.getItem('adminToken'));
+            const [verified, setVerified] = React.useState(false);
+            
+            React.useEffect(() => {
+                if (token) {
+                    fetch(`${API_URL}/admin/verify?token=${token}`)
+                        .then(res => {
+                            if (res.ok) {
+                                setVerified(true);
+                            } else {
+                                localStorage.removeItem('adminToken');
+                                setToken(null);
+                            }
+                        })
+                        .catch(() => {
+                            setVerified(true); // Assume valid if can't verify
+                        });
+                }
+            }, [token]);
+            
+            const handleLogout = () => {
+                localStorage.removeItem('adminToken');
+                setToken(null);
+                setVerified(false);
+            };
+            
+            if (!token) {
+                return <Login onLogin={(t) => { setToken(t); setVerified(true); }} />;
+            }
+            
+            if (!verified) {
+                return <div className="loading"><div className="spinner"></div></div>;
+            }
+            
+            return <Dashboard token={token} onLogout={handleLogout} />;
+        }
+        
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
