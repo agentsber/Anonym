@@ -585,6 +585,82 @@ export default function GroupChatScreen() {
           />
         </View>
       </Modal>
+
+      {/* Forward Modal */}
+      <Modal
+        visible={showForward}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowForward(false)}
+      >
+        <View style={styles.forwardModal}>
+          <View style={styles.forwardHeader}>
+            <Text style={styles.forwardTitle}>Переслать сообщение</Text>
+            <TouchableOpacity onPress={() => setShowForward(false)}>
+              <Ionicons name="close" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+          </View>
+          
+          {isForwarding ? (
+            <ActivityIndicator color={COLORS.primary} style={{ marginTop: 40 }} />
+          ) : (
+            <ScrollView style={styles.forwardContent}>
+              {forwardTargets.groups.length > 0 && (
+                <>
+                  <Text style={styles.forwardSectionTitle}>Группы</Text>
+                  {forwardTargets.groups.map(target => (
+                    <TouchableOpacity
+                      key={target.id}
+                      style={styles.forwardItem}
+                      onPress={() => handleForward(target)}
+                    >
+                      <LinearGradient
+                        colors={[target.avatar_color || COLORS.primary, (target.avatar_color || COLORS.primary) + '99']}
+                        style={styles.forwardAvatar}
+                      >
+                        <Ionicons name="people" size={20} color="#FFF" />
+                      </LinearGradient>
+                      <View style={styles.forwardInfo}>
+                        <Text style={styles.forwardName}>{target.name}</Text>
+                        <Text style={styles.forwardSubtitle}>{target.member_count} участников</Text>
+                      </View>
+                      <Ionicons name="arrow-forward" size={20} color={COLORS.textSecondary} />
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+              
+              {forwardTargets.contacts.length > 0 && (
+                <>
+                  <Text style={styles.forwardSectionTitle}>Контакты</Text>
+                  {forwardTargets.contacts.map(target => (
+                    <TouchableOpacity
+                      key={target.id}
+                      style={styles.forwardItem}
+                      onPress={() => handleForward(target)}
+                    >
+                      <LinearGradient
+                        colors={[COLORS.surfaceLight, COLORS.surfaceLight]}
+                        style={styles.forwardAvatar}
+                      >
+                        <Text style={styles.forwardAvatarText}>{target.avatar_letter}</Text>
+                      </LinearGradient>
+                      <View style={styles.forwardInfo}>
+                        <Text style={styles.forwardName}>{target.name}</Text>
+                      </View>
+                      <Ionicons name="arrow-forward" size={20} color={COLORS.textSecondary} />
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+              
+              {forwardTargets.groups.length === 0 && forwardTargets.contacts.length === 0 && (
+                <Text style={styles.forwardEmpty}>Нет доступных получателей</Text>
+              )}
+            </ScrollView>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
