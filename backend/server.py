@@ -169,6 +169,18 @@ class GroupMemberUpdate(BaseModel):
 class GroupBanMember(BaseModel):
     reason: Optional[str] = None
 
+# ==================== Forward Message Models ====================
+
+class ForwardMessageRequest(BaseModel):
+    sender_id: str
+    original_message_id: str
+    original_message_type: str  # "direct" or "group"
+    target_type: str  # "user" or "group"
+    target_id: str  # user_id or group_id
+    # For direct messages, we need encryption info
+    encrypted_content: Optional[str] = None
+    ephemeral_key: Optional[str] = None
+
 class MessageEdit(BaseModel):
     encrypted_content: str
     ephemeral_key: str
