@@ -67,6 +67,9 @@ export default function GroupChatScreen() {
   const [searchResults, setSearchResults] = useState<GroupMessage[]>([]);
   const [pinnedMessages, setPinnedMessages] = useState<GroupMessage[]>([]);
   const [showPinned, setShowPinned] = useState(false);
+  const [showForward, setShowForward] = useState(false);
+  const [forwardTargets, setForwardTargets] = useState<{ contacts: ForwardTarget[]; groups: ForwardTarget[] }>({ contacts: [], groups: [] });
+  const [isForwarding, setIsForwarding] = useState(false);
 
   const isAdmin = group?.members?.some(
     m => m.user_id === user?.id && m.role === 'admin'
