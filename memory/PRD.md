@@ -73,6 +73,8 @@ All screens now use consistent dark theme:
 - `types.ts` - TypeScript типы для всех компонентов
 - `index.ts` - Barrel export
 
+**Результат:** Файл уменьшен с 1064 до ~350 строк (на 67%)
+
 ## Architecture
 ```
 /app
