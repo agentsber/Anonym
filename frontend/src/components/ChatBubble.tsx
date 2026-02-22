@@ -10,7 +10,21 @@ import {
   Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Message } from '../types';
+
+const COLORS = {
+  background: '#0A0A0A',
+  surface: '#1A1A1A',
+  surfaceLight: '#252525',
+  primary: '#6C5CE7',
+  primaryLight: '#A29BFE',
+  text: '#FFFFFF',
+  textSecondary: '#8E8E93',
+  border: '#333333',
+  success: '#00D9A5',
+  error: '#FF6B6B',
+};
 
 interface ChatBubbleProps {
   message: Message;
@@ -218,20 +232,20 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
         >
           <View style={[styles.actionsMenu, isOutgoing ? styles.actionsMenuRight : styles.actionsMenuLeft]}>
             <TouchableOpacity style={styles.actionItem} onPress={() => { setShowActions(false); onReply?.(message); }}>
-              <Ionicons name="arrow-undo" size={20} color="#007AFF" />
+              <Ionicons name="arrow-undo" size={20} color={COLORS.primary} />
               <Text style={styles.actionText}>Ответить</Text>
             </TouchableOpacity>
             
             {isOutgoing && message.message_type === 'text' && (
               <TouchableOpacity style={styles.actionItem} onPress={() => { setShowActions(false); onEdit?.(message); }}>
-                <Ionicons name="pencil" size={20} color="#007AFF" />
+                <Ionicons name="pencil" size={20} color={COLORS.primary} />
                 <Text style={styles.actionText}>Редактировать</Text>
               </TouchableOpacity>
             )}
             
             <TouchableOpacity style={styles.actionItem} onPress={handleDeletePress}>
-              <Ionicons name="trash" size={20} color="#FF3B30" />
-              <Text style={[styles.actionText, { color: '#FF3B30' }]}>Удалить</Text>
+              <Ionicons name="trash" size={20} color={COLORS.error} />
+              <Text style={[styles.actionText, { color: COLORS.error }]}>Удалить</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -262,11 +276,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   outgoingBubble: {
-    backgroundColor: '#007AFF',
+    backgroundColor: COLORS.primary,
     borderBottomRightRadius: 4,
   },
   incomingBubble: {
-    backgroundColor: '#E8E8E8',
+    backgroundColor: COLORS.surfaceLight,
     borderBottomLeftRadius: 4,
   },
   deletedBubble: {
@@ -278,17 +292,17 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   deletedBubbleOutgoing: {
-    backgroundColor: 'rgba(0,122,255,0.3)',
+    backgroundColor: COLORS.primary + '40',
     borderBottomRightRadius: 4,
   },
   deletedBubbleIncoming: {
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: COLORS.surface,
     borderBottomLeftRadius: 4,
   },
   deletedText: {
     fontSize: 14,
     fontStyle: 'italic',
-    color: '#8E8E93',
+    color: COLORS.textSecondary,
   },
   replyPreview: {
     flexDirection: 'row',
@@ -301,7 +315,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
   replyPreviewIncoming: {
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: COLORS.surface,
   },
   replyBar: {
     width: 3,
@@ -312,7 +326,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.6)',
   },
   replyBarIncoming: {
-    backgroundColor: '#007AFF',
+    backgroundColor: COLORS.primary,
   },
   replyContent: {
     flex: 1,
@@ -326,7 +340,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.9)',
   },
   replyNameIncoming: {
-    color: '#007AFF',
+    color: COLORS.primary,
   },
   replyText: {
     fontSize: 13,
@@ -335,7 +349,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
   },
   replyTextIncoming: {
-    color: '#666',
+    color: COLORS.textSecondary,
   },
   messageText: {
     fontSize: 16,
@@ -345,7 +359,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   incomingText: {
-    color: '#000000',
+    color: COLORS.text,
   },
   footer: {
     flexDirection: 'row',
@@ -381,7 +395,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
   },
   incomingTime: {
-    color: '#666',
+    color: COLORS.textSecondary,
   },
   statusIcon: {
     marginLeft: 2,
@@ -398,19 +412,19 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
   },
   autoDeleteTextIncoming: {
-    color: '#666',
+    color: COLORS.textSecondary,
   },
   mediaImage: {
     width: maxMediaWidth,
     height: maxMediaWidth * 0.75,
     borderRadius: 14,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: COLORS.surface,
   },
   videoPlaceholder: {
     width: maxMediaWidth,
     height: maxMediaWidth * 0.6,
     borderRadius: 14,
-    backgroundColor: '#333',
+    backgroundColor: COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -427,12 +441,12 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   actionsMenu: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
     borderRadius: 12,
     padding: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 5,
   },
@@ -453,6 +467,6 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontSize: 15,
-    color: '#000',
+    color: COLORS.text,
   },
 });
