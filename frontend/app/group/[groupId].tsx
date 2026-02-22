@@ -322,6 +322,160 @@ export default function GroupChatScreen() {
     }
   };
 
+  // Sticker handling
+  const handleSendSticker = async (sticker: string) => {
+    if (!user || !groupId || isSending) return;
+    
+    setIsSending(true);
+    setShowStickers(false);
+    
+    try {
+      const newMessage = await groupsApi.sendMessage(groupId, {
+        sender_id: user.id,
+        content: sticker,
+        message_type: 'sticker',
+      });
+      
+      setMessages(prev => [...prev, newMessage]);
+      setTimeout(() => flatListRef.current?.scrollToEnd(), 100);
+    } catch (err) {
+      console.error('Error sending sticker:', err);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  // Voice message handling
+  const startRecording = async () => {
+    try {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Ошибка', 'Нужно разрешение на запись аудио');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      
+      setRecording(newRecording);
+      setIsRecording(true);
+      setRecordingDuration(0);
+      
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error('Error starting recording:', err);
+      Alert.alert('Ошибка', 'Не удалось начать запись');
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording || !user || !groupId) return;
+    
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    
+    setIsRecording(false);
+    
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      const duration = recordingDuration;
+      
+      if (uri) {
+        setIsSending(true);
+        
+        // For simplicity, send voice message as a text indicator
+        // In production, you would upload the file first
+        const newMessage = await groupsApi.sendMessage(groupId, {
+          sender_id: user.id,
+          content: `🎤 Голосовое сообщение (${formatDuration(duration)})`,
+          message_type: 'voice',
+          media_url: uri,
+        });
+        
+        setMessages(prev => [...prev, newMessage]);
+        setTimeout(() => flatListRef.current?.scrollToEnd(), 100);
+      }
+    } catch (err) {
+      console.error('Error stopping recording:', err);
+    } finally {
+      setRecording(null);
+      setRecordingDuration(0);
+      setIsSending(false);
+    }
+  };
+
+  const cancelRecording = async () => {
+    if (!recording) return;
+    
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    
+    try {
+      await recording.stopAndUnloadAsync();
+    } catch (err) {
+      console.error('Error canceling recording:', err);
+    }
+    
+    setRecording(null);
+    setIsRecording(false);
+    setRecordingDuration(0);
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const playVoiceMessage = async (mediaUrl: string, messageId: string) => {
+    try {
+      if (playingVoice === messageId) {
+        // Stop playing
+        if (soundRef.current) {
+          await soundRef.current.stopAsync();
+          await soundRef.current.unloadAsync();
+          soundRef.current = null;
+        }
+        setPlayingVoice(null);
+        return;
+      }
+
+      // Stop any currently playing
+      if (soundRef.current) {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+      }
+
+      const { sound } = await Audio.Sound.createAsync({ uri: mediaUrl });
+      soundRef.current = sound;
+      setPlayingVoice(messageId);
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setPlayingVoice(null);
+        }
+      });
+
+      await sound.playAsync();
+    } catch (err) {
+      console.error('Error playing voice:', err);
+      setPlayingVoice(null);
+    }
+  };
+
   const handleSearch = async () => {
     if (!groupId || !searchQuery.trim()) return;
     
