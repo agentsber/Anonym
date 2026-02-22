@@ -77,6 +77,19 @@ export default function GroupChatScreen() {
   const [showForward, setShowForward] = useState(false);
   const [forwardTargets, setForwardTargets] = useState<{ contacts: ForwardTarget[]; groups: ForwardTarget[] }>({ contacts: [], groups: [] });
   const [isForwarding, setIsForwarding] = useState(false);
+  
+  // Stickers state
+  const [showStickers, setShowStickers] = useState(false);
+  const [stickerPacks, setStickerPacks] = useState<StickerPack[]>([]);
+  const [activePackIndex, setActivePackIndex] = useState(0);
+  
+  // Voice message state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [playingVoice, setPlayingVoice] = useState<string | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const isAdmin = group?.members?.some(
     m => m.user_id === user?.id && m.role === 'admin'
@@ -85,9 +98,24 @@ export default function GroupChatScreen() {
   useEffect(() => {
     loadGroupData();
     loadPinnedMessages();
+    loadStickerPacks();
     const interval = setInterval(loadMessages, 3000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+    };
   }, [groupId]);
+
+  const loadStickerPacks = async () => {
+    try {
+      const packs = await stickersApi.getPacks();
+      setStickerPacks(packs);
+    } catch (err) {
+      console.error('Error loading stickers:', err);
+    }
+  };
 
   const loadGroupData = async () => {
     if (!groupId) return;
