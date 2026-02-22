@@ -1032,4 +1032,32 @@ const styles = StyleSheet.create({
   forwardName: { fontSize: 16, fontWeight: '600', color: COLORS.text },
   forwardSubtitle: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
   forwardEmpty: { fontSize: 15, color: COLORS.textSecondary, textAlign: 'center', marginTop: 40 },
+  // Forwarded indicator
+  forwardedIndicator: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
+  forwardedText: { fontSize: 11, color: COLORS.textSecondary, fontStyle: 'italic' },
+  // Stickers
+  stickerMessage: { fontSize: 48, lineHeight: 56 },
+  stickersPanel: { backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border, maxHeight: 250 },
+  stickerPackTabs: { flexDirection: 'row', padding: 8, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  stickerPackTab: { paddingHorizontal: 16, paddingVertical: 8, marginRight: 8, borderRadius: 16, backgroundColor: COLORS.surfaceLight },
+  stickerPackTabActive: { backgroundColor: COLORS.primary },
+  stickerPackTabText: { fontSize: 13, fontWeight: '600', color: COLORS.text },
+  stickersGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 8 },
+  stickerItem: { width: '12.5%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
+  stickerEmoji: { fontSize: 28 },
+  // Voice messages
+  voiceButton: { padding: 8 },
+  voiceMessage: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surfaceLight, padding: 12, borderRadius: 16, gap: 8 },
+  voiceWaveform: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 2 },
+  voiceBar: { width: 3, borderRadius: 2 },
+  voiceDuration: { fontSize: 12, color: COLORS.textSecondary, minWidth: 36 },
+  messageTimeAlt: { fontSize: 10, color: COLORS.textSecondary, marginTop: 4, alignSelf: 'flex-end' },
+  // Recording
+  recordingBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, padding: 12, borderTopWidth: 1, borderTopColor: COLORS.border },
+  recordingCancel: { padding: 8 },
+  recordingInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  recordingDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.error },
+  recordingTime: { fontSize: 18, fontWeight: '600', color: COLORS.text },
+  recordingText: { fontSize: 14, color: COLORS.textSecondary },
+  recordingStop: { padding: 4 },
 });
