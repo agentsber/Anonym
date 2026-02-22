@@ -1399,6 +1399,189 @@ async def delete_group(group_id: str, user_id: str):
     logger.info(f"Group {group_id} deleted")
     return {"status": "deleted"}
 
+# ==================== Forward Messages ====================
+
+@api_router.post("/messages/forward")
+async def forward_message(request: ForwardMessageRequest):
+    """Forward a message to another user or group"""
+    # Get sender info
+    sender = await db.users.find_one({"id": request.sender_id})
+    if not sender:
+        raise HTTPException(status_code=404, detail="Sender not found")
+    
+    # Get original message content
+    original_content = ""
+    original_sender_name = ""
+    original_media_url = None
+    original_message_type = "text"
+    
+    if request.original_message_type == "direct":
+        # Get from direct messages
+        original_msg = await db.messages.find_one({"id": request.original_message_id})
+        if original_msg:
+            original_content = original_msg.get("encrypted_content", "")
+            original_sender = await db.users.find_one({"id": original_msg["sender_id"]})
+            original_sender_name = original_sender["username"] if original_sender else "Unknown"
+            original_message_type = original_msg.get("message_type", "text")
+    else:
+        # Get from group messages
+        original_msg = await db.group_messages.find_one({"id": request.original_message_id})
+        if original_msg:
+            original_content = original_msg.get("content", "")
+            original_sender_name = original_msg.get("sender_username", "Unknown")
+            original_media_url = original_msg.get("media_url")
+            original_message_type = original_msg.get("message_type", "text")
+    
+    if not original_msg:
+        raise HTTPException(status_code=404, detail="Original message not found")
+    
+    message_id = str(uuid.uuid4())
+    timestamp = datetime.utcnow()
+    
+    if request.target_type == "group":
+        # Forward to group
+        membership = await db.group_members.find_one({
+            "group_id": request.target_id,
+            "user_id": request.sender_id
+        })
+        if not membership:
+            raise HTTPException(status_code=403, detail="You are not a member of this group")
+        
+        # Create forwarded message in group
+        forwarded_content = original_content
+        if request.original_message_type == "direct" and original_content:
+            # For encrypted direct messages, we can't forward the actual content
+            forwarded_content = f"[Пересланное сообщение от {original_sender_name}]"
+        
+        message_doc = {
+            "id": message_id,
+            "group_id": request.target_id,
+            "sender_id": request.sender_id,
+            "sender_username": sender["username"],
+            "content": forwarded_content,
+            "message_type": original_message_type,
+            "media_url": original_media_url,
+            "timestamp": timestamp,
+            "is_forwarded": True,
+            "forwarded_from": original_sender_name,
+            "is_edited": False,
+            "is_pinned": False,
+            "is_deleted": False
+        }
+        
+        await db.group_messages.insert_one(message_doc)
+        
+        # Notify group members
+        members = await db.group_members.find({"group_id": request.target_id}).to_list(1000)
+        for member in members:
+            if member["user_id"] != request.sender_id:
+                await manager.send_personal_message({
+                    "type": "group_message",
+                    "group_id": request.target_id,
+                    "message": {
+                        "id": message_id,
+                        "sender_id": request.sender_id,
+                        "sender_username": sender["username"],
+                        "content": forwarded_content,
+                        "message_type": original_message_type,
+                        "media_url": original_media_url,
+                        "timestamp": timestamp.isoformat(),
+                        "is_forwarded": True,
+                        "forwarded_from": original_sender_name
+                    }
+                }, member["user_id"])
+        
+        return {
+            "status": "forwarded",
+            "target_type": "group",
+            "target_id": request.target_id,
+            "message_id": message_id
+        }
+    else:
+        # Forward to user (direct message)
+        if not request.encrypted_content or not request.ephemeral_key:
+            raise HTTPException(status_code=400, detail="Encrypted content required for direct messages")
+        
+        # Verify receiver exists
+        receiver = await db.users.find_one({"id": request.target_id})
+        if not receiver:
+            raise HTTPException(status_code=404, detail="Receiver not found")
+        
+        message_doc = {
+            "id": message_id,
+            "sender_id": request.sender_id,
+            "receiver_id": request.target_id,
+            "encrypted_content": request.encrypted_content,
+            "ephemeral_key": request.ephemeral_key,
+            "message_type": original_message_type,
+            "status": "pending",
+            "timestamp": timestamp,
+            "is_forwarded": True,
+            "forwarded_from": original_sender_name
+        }
+        
+        await db.messages.insert_one(message_doc)
+        
+        # Notify receiver via WebSocket
+        await manager.send_personal_message({
+            "type": "new_message",
+            "message": {
+                "id": message_id,
+                "sender_id": request.sender_id,
+                "encrypted_content": request.encrypted_content,
+                "ephemeral_key": request.ephemeral_key,
+                "message_type": original_message_type,
+                "timestamp": timestamp.isoformat(),
+                "is_forwarded": True,
+                "forwarded_from": original_sender_name
+            }
+        }, request.target_id)
+        
+        return {
+            "status": "forwarded",
+            "target_type": "user",
+            "target_id": request.target_id,
+            "message_id": message_id
+        }
+
+@api_router.get("/forward/targets/{user_id}")
+async def get_forward_targets(user_id: str):
+    """Get list of contacts and groups where user can forward messages"""
+    # Get contacts
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    contacts = []
+    for contact_id in user.get("contacts", []):
+        contact = await db.users.find_one({"id": contact_id})
+        if contact:
+            contacts.append({
+                "type": "user",
+                "id": contact["id"],
+                "name": contact["username"],
+                "avatar_letter": contact["username"][0].upper()
+            })
+    
+    # Get groups
+    groups = []
+    memberships = await db.group_members.find({"user_id": user_id}).to_list(1000)
+    for membership in memberships:
+        group = await db.groups.find_one({"id": membership["group_id"]})
+        if group:
+            groups.append({
+                "type": "group",
+                "id": group["id"],
+                "name": group["name"],
+                "avatar_color": group.get("avatar_color", "#6C5CE7"),
+                "member_count": await db.group_members.count_documents({"group_id": group["id"]})
+            })
+    
+    return {
+        "contacts": contacts,
+        "groups": groups
+    }
+
 # ==================== WebSocket Endpoint ====================
 
 @app.websocket("/ws/{user_id}")
