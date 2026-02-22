@@ -295,4 +295,31 @@ export const forwardApi = {
   },
 };
 
+// Stickers API
+export const stickersApi = {
+  getPacks: async () => {
+    const response = await api.get('/stickers/packs');
+    return response.data;
+  },
+
+  getPack: async (packId: string) => {
+    const response = await api.get(`/stickers/packs/${packId}`);
+    return response.data;
+  },
+};
+
+// Voice Messages API
+export const voiceApi = {
+  upload: async (formData: FormData) => {
+    const response = await api.post('/upload/voice', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  getUrl: (fileId: string) => {
+    return `${API_URL}/api/voice/${fileId}`;
+  },
+};
+
 export default api;
