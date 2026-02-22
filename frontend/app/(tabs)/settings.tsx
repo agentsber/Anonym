@@ -137,7 +137,6 @@ export default function SettingsScreen() {
       await enableWipeOnMaxAttempts(false);
     }
   };
-  };
 
   // Generate avatar color based on username
   const getAvatarColors = () => {
