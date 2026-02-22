@@ -1824,9 +1824,9 @@ async def get_admin_users(token: str, skip: int = 0, limit: int = 50):
         result.append({
             "id": user["id"],
             "username": user["username"],
-            "email": user["email"],
-            "created_at": user["created_at"].isoformat(),
-            "last_seen": user.get("last_seen", user["created_at"]).isoformat(),
+            "email": user.get("email", "N/A"),
+            "created_at": user["created_at"].isoformat() if "created_at" in user else "N/A",
+            "last_seen": user.get("last_seen", user.get("created_at", datetime.utcnow())).isoformat() if user.get("last_seen") or user.get("created_at") else "N/A",
             "is_banned": user.get("is_banned", False),
             "message_count": msg_count
         })
