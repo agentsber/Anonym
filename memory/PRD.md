@@ -57,14 +57,21 @@ All screens now use consistent dark theme:
 - [ ] **P3** Data Wipe on Incorrect PIN: Track failed PIN attempts and wipe data after threshold
 - [ ] **P3** Certificate Pinning: Enhanced security against MITM attacks
 
-## Refactoring Recommendations
-- `/app/frontend/app/(tabs)/group/[groupId].tsx` - 700+ lines, needs splitting into:
-  - `MessageItem` component
-  - `MessageMenu` component
-  - `InputToolbar` component
-  - `PinnedMessageHeader` component
-  - `ForwardMessageModal` component
-  - `StickerPanel` component
+## Refactoring (Completed 2025-02-22)
+Файл `group/[groupId].tsx` был разбит на 12 компонентов в `/app/frontend/src/components/group-chat/`:
+- `MessageItem.tsx` - Компонент сообщения (text, image, voice, sticker)
+- `MessageMenu.tsx` - Модальное меню действий с сообщением
+- `InputToolbar.tsx` - Панель ввода сообщения
+- `ReplyBar.tsx` - Превью ответа на сообщение
+- `EditBar.tsx` - Панель редактирования сообщения
+- `RecordingBar.tsx` - Панель записи голосового сообщения
+- `StickerPanel.tsx` - Панель выбора стикеров
+- `PinnedMessagesModal.tsx` - Модалка закреплённых сообщений
+- `ForwardModal.tsx` - Модалка пересылки сообщений
+- `SearchBar.tsx` - Поиск по сообщениям
+- `colors.ts` - Единая цветовая схема
+- `types.ts` - TypeScript типы для всех компонентов
+- `index.ts` - Barrel export
 
 ## Architecture
 ```
