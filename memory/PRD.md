@@ -1,89 +1,107 @@
-# Anonym X - Secure Messenger PRD
+# Anonym X - Secure Android Messenger
 
-## Оригинальное описание проекта
-Безопасный Android мессенджер с E2E шифрованием.
+## Original Problem Statement
+Разработка защищённого Android-мессенджера с E2E шифрованием.
 
-## Основные функции (запрошенные пользователем)
-- [x] Регистрация пользователей (email/пароль)
-- [x] Поиск пользователей
-- [x] E2E шифрование сообщений
-- [x] Статус прочтения ("прочитано")
-- [x] Онлайн статус
-- [x] Исчезающие сообщения
-- [x] Ответ на сообщение
-- [x] Редактирование/удаление сообщений
-- [x] **Групповые чаты** (ЗАВЕРШЕНО)
-- [x] **Управление группой** (ЗАВЕРШЕНО)
-- [x] **Расширенные групповые чаты** (ЗАВЕРШЕНО)
-- [x] **Пересылка сообщений** (ЗАВЕРШЕНО)
-- [x] **Голосовые сообщения** (ЗАВЕРШЕНО 22.02.2026)
-- [x] **Стикеры** (ЗАВЕРШЕНО 22.02.2026)
-- [x] Темная тема
+## Platform & Tech Stack
+- **Frontend:** React Native (Expo), TypeScript, Zustand, expo-router
+- **Backend:** Python, FastAPI, MongoDB, python-socketio
+- **Deployment:** Docker, docker-compose, EAS Build (APK)
 
-## ВСЕ ОСНОВНЫЕ ФУНКЦИИ РЕАЛИЗОВАНЫ!
+## Core Features (Completed)
+- [x] User registration (email/password)
+- [x] User search
+- [x] E2E encrypted messaging
+- [x] Read status ("прочитано")
+- [x] Online status
+- [x] Disappearing messages
+- [x] Reply to message
+- [x] Edit/delete messages
+- [x] Message forwarding
+- [x] Group chats with advanced features:
+  - Edit/delete own messages
+  - Pin/unpin messages
+  - Assign/unassign admins
+  - Ban/unban users
+  - Search within chat
+  - View group info
+  - Send media files (images/videos)
+- [x] Voice messages
+- [x] Stickers
+- [x] Modern dark theme (COMPLETED - 2025-02-22)
+- [x] Docker deployment setup
+- [x] Custom splash screen
 
-## Архитектура
+## Dark Theme Implementation (2025-02-22)
+All screens now use consistent dark theme:
+- Background: #0A0A0A
+- Surface: #1A1A1A
+- Surface Light: #252525
+- Primary: #6C5CE7
+- Primary Light: #A29BFE
+- Text: #FFFFFF
+- Text Secondary: #8E8E93
+- Text Muted: #555555
+- Border: #333333
+
+**Files updated:**
+- `/app/frontend/app/_layout.tsx`
+- `/app/frontend/app/auth/login.tsx`
+- `/app/frontend/app/search.tsx`
+- `/app/frontend/app/security/lock.tsx`
+- `/app/frontend/app/security/setup-pin.tsx`
+- `/app/frontend/src/components/ChatBubble.tsx`
+
+## Future Tasks (Backlog)
+- [ ] **P2** Screenshot Protection: Implement `FLAG_SECURE` on Android
+- [ ] **P3** Data Wipe on Incorrect PIN: Track failed PIN attempts and wipe data after threshold
+- [ ] **P3** Certificate Pinning: Enhanced security against MITM attacks
+
+## Refactoring Recommendations
+- `/app/frontend/app/(tabs)/group/[groupId].tsx` - 700+ lines, needs splitting into:
+  - `MessageItem` component
+  - `MessageMenu` component
+  - `InputToolbar` component
+  - `PinnedMessageHeader` component
+  - `ForwardMessageModal` component
+  - `StickerPanel` component
+
+## Architecture
 ```
 /app
 ├── backend/
-│   ├── server.py
 │   ├── Dockerfile
+│   ├── server.py
 │   └── requirements.txt
 ├── frontend/
+│   ├── Dockerfile
 │   ├── app/
-│   │   ├── (tabs)/
-│   │   ├── auth/
-│   │   ├── chat/
-│   │   ├── group/[groupId].tsx     # Групповой чат
-│   │   ├── group-manage/[manageId].tsx  # Управление группой
-│   │   └── create-group.tsx
-│   └── src/
-│       ├── services/api.ts
-│       ├── stores/
-│       └── types/
+│   │   ├── (tabs)/ - Main tabs (chats, settings)
+│   │   ├── auth/ - Login/Register
+│   │   ├── chat/ - 1-on-1 chats
+│   │   ├── group/ - Group chats
+│   │   ├── security/ - PIN lock screens
+│   │   └── search.tsx
+│   ├── src/
+│   │   ├── services/api.ts
+│   │   ├── stores/
+│   │   └── types/
+│   └── assets/
 ├── docker-compose.yml
-├── nginx.conf
-└── DEPLOY.md
+└── README.md
 ```
 
-## API Endpoints для групповых чатов
+## Key API Endpoints
+- `/api/groups/create` - Create group
+- `/api/groups/{id}/manage` - Manage group
+- `/api/groups/{id}/messages` - Group messages
+- `/api/messages/{id}` - Edit/delete message
+- `/api/messages/{id}/pin` - Pin message
+- `/api/messages/forward` - Forward message
+- `/api/media/upload` - Upload media
+- `/api/stickers` - Get sticker packs
 
-### Сообщения
-- `POST /api/groups/{id}/messages` - Отправка (с медиа)
-- `PUT /api/groups/{id}/messages/{msg_id}` - Редактирование
-- `DELETE /api/groups/{id}/messages/{msg_id}` - Удаление
-- `GET /api/groups/{id}/messages` - Получение (с поиском)
-
-### Закрепление
-- `POST /api/groups/{id}/messages/{msg_id}/pin` - Закрепить
-- `DELETE /api/groups/{id}/messages/{msg_id}/pin` - Открепить
-- `GET /api/groups/{id}/pinned` - Список закрепленных
-
-### Поиск
-- `GET /api/groups/{id}/search?q=query` - Поиск сообщений
-
-### Администраторы
-- `PUT /api/groups/{id}/members/{member_id}/role` - Назначить/снять админа
-
-### Блокировка
-- `POST /api/groups/{id}/ban/{member_id}` - Заблокировать
-- `DELETE /api/groups/{id}/ban/{member_id}` - Разблокировать
-- `GET /api/groups/{id}/bans` - Список заблокированных
-
-## Статус тестирования
-- Backend: 29/29 тестов для расширенных функций
-- Frontend: 85% работает
-
-## Предстоящие задачи
-
-### P1 - Высокий приоритет
-- Пересылка сообщений
-
-### P2 - Средний приоритет
-- Голосовые сообщения (expo-av)
-- Стикеры
-
-### P3 - Низкий приоритет
-- Защита от скриншотов (FLAG_SECURE)
-- Удаление данных при неверном PIN
-- Certificate Pinning
+## Database Schema
+- **users:** `{_id, username, email, password_hash, contacts, last_seen}`
+- **groups:** `{_id, name, owner, members, admins, banned_users, pinned_messages}`
+- **messages:** `{_id, sender, receiver, content, timestamp, type, status, is_edited...}`
