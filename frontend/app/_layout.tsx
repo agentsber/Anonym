@@ -1,10 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet, AppState, AppStateStatus } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, AppState, AppStateStatus, Platform } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../src/stores/authStore';
 import { useSecurityStore } from '../src/stores/securityStore';
+import { useCallStore } from '../src/stores/callStore';
+import IncomingCallOverlay from '../src/components/IncomingCallOverlay';
+import api from '../src/services/api';
 
 const queryClient = new QueryClient();
 
@@ -18,11 +21,97 @@ const COLORS = {
 function RootLayoutContent() {
   const { initialize: initAuth, isInitialized: authInitialized, isLoading: authLoading, user } = useAuthStore();
   const { initialize: initSecurity, isInitialized: securityInitialized, isLocked, isPinSet, lock } = useSecurityStore();
+  const { setUserId, handleIncomingCall, handleCallAnswered, handleCallRejected, handleCallEnded, handleIceCandidate, handleMediaUpdate } = useCallStore();
+  const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     initAuth();
     initSecurity();
   }, []);
+
+  // Initialize call store with user ID
+  useEffect(() => {
+    if (user?.id) {
+      setUserId(user.id);
+    }
+  }, [user?.id]);
+
+  // Connect WebSocket for call signaling
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+    const wsUrl = API_URL.replace('https://', 'wss://').replace('http://', 'ws://') + `/ws/${user.id}`;
+
+    const connect = () => {
+      try {
+        const ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          console.log('WebSocket connected for calls');
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            
+            switch (data.type) {
+              case 'incoming_call':
+                handleIncomingCall(data);
+                break;
+              case 'call_answered':
+                handleCallAnswered(data);
+                break;
+              case 'call_rejected':
+                handleCallRejected();
+                break;
+              case 'call_ended':
+                handleCallEnded(data);
+                break;
+              case 'ice_candidate':
+                handleIceCandidate(data);
+                break;
+              case 'call_media_update':
+                handleMediaUpdate(data);
+                break;
+            }
+          } catch (e) {
+            // Not a JSON message, might be pong or other
+          }
+        };
+
+        ws.onclose = () => {
+          console.log('WebSocket closed, reconnecting...');
+          setTimeout(connect, 3000);
+        };
+
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+        };
+
+        wsRef.current = ws;
+      } catch (error) {
+        console.error('Failed to connect WebSocket:', error);
+        setTimeout(connect, 5000);
+      }
+    };
+
+    connect();
+
+    // Ping to keep connection alive
+    const pingInterval = setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send('ping');
+      }
+    }, 30000);
+
+    return () => {
+      clearInterval(pingInterval);
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [user?.id]);
 
   // Lock app when going to background
   useEffect(() => {
@@ -65,7 +154,9 @@ function RootLayoutContent() {
         <Stack.Screen name="search" options={{ title: 'Поиск', headerBackTitle: 'Назад', presentation: 'modal' }} />
         <Stack.Screen name="security/lock" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="security/setup-pin" options={{ title: 'Установка PIN', headerBackTitle: 'Назад' }} />
+        <Stack.Screen name="video-call" options={{ headerShown: false, gestureEnabled: false, presentation: 'fullScreenModal' }} />
       </Stack>
+      <IncomingCallOverlay />
     </>
   );
 }

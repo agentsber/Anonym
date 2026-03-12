@@ -31,6 +31,12 @@
 - [x] Modern dark theme (COMPLETED - 2025-02-22)
 - [x] Docker deployment setup
 - [x] Custom splash screen
+- [x] **Video Calls with E2E Encryption (COMPLETED - 2025-02-22)**
+  - WebRTC peer-to-peer video/audio calls
+  - Toggle camera/microphone
+  - Switch front/rear camera
+  - Incoming call overlay with accept/reject
+  - Call history
 
 ## Dark Theme Implementation (2025-02-22)
 All screens now use consistent dark theme:

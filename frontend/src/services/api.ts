@@ -323,3 +323,49 @@ export const voiceApi = {
 };
 
 export default api;
+
+// Video Calls API
+export const callsApi = {
+  initiateCall: async (data: {
+    caller_id: string;
+    callee_id: string;
+    offer: string;
+    call_type: 'video' | 'audio';
+  }) => {
+    const response = await api.post('/calls/initiate', data);
+    return response.data;
+  },
+
+  answerCall: async (data: { call_id: string; answer: string }) => {
+    const response = await api.post('/calls/answer', data);
+    return response.data;
+  },
+
+  sendIceCandidate: async (data: {
+    call_id: string;
+    user_id: string;
+    candidate: string;
+  }) => {
+    const response = await api.post('/calls/ice-candidate', data);
+    return response.data;
+  },
+
+  callAction: async (data: {
+    call_id: string;
+    user_id: string;
+    action: 'reject' | 'end' | 'toggle_video' | 'toggle_audio' | 'switch_camera';
+  }) => {
+    const response = await api.post('/calls/action', data);
+    return response.data;
+  },
+
+  getCallHistory: async (userId: string, limit?: number) => {
+    const response = await api.get(`/calls/history/${userId}`, { params: { limit } });
+    return response.data;
+  },
+
+  getActiveCall: async (userId: string) => {
+    const response = await api.get(`/calls/active/${userId}`);
+    return response.data;
+  },
+};

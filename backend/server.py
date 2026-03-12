@@ -2088,6 +2088,272 @@ async def list_backups(token: str):
 # Import timedelta for admin token expiration
 from datetime import timedelta
 
+# ==================== Video Call (WebRTC) Models ====================
+
+class CallOffer(BaseModel):
+    caller_id: str
+    callee_id: str
+    offer: str  # SDP offer (JSON string)
+    call_type: str = "video"  # video or audio
+
+class CallAnswer(BaseModel):
+    call_id: str
+    answer: str  # SDP answer (JSON string)
+
+class IceCandidate(BaseModel):
+    call_id: str
+    user_id: str
+    candidate: str  # ICE candidate (JSON string)
+
+class CallAction(BaseModel):
+    call_id: str
+    user_id: str
+    action: str  # "accept", "reject", "end", "toggle_video", "toggle_audio", "switch_camera"
+
+# Active calls storage
+active_calls: Dict[str, dict] = {}
+
+# ==================== Video Call Endpoints ====================
+
+@api_router.post("/calls/initiate")
+async def initiate_call(offer: CallOffer):
+    """Initiate a video/audio call"""
+    # Verify both users exist
+    caller = await db.users.find_one({"id": offer.caller_id})
+    callee = await db.users.find_one({"id": offer.callee_id})
+    
+    if not caller or not callee:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if callee is online
+    if not manager.is_online(offer.callee_id):
+        raise HTTPException(status_code=400, detail="User is offline")
+    
+    # Check if either user is already in a call
+    for call_id, call in active_calls.items():
+        if call["status"] == "active":
+            if offer.caller_id in [call["caller_id"], call["callee_id"]]:
+                raise HTTPException(status_code=400, detail="You are already in a call")
+            if offer.callee_id in [call["caller_id"], call["callee_id"]]:
+                raise HTTPException(status_code=400, detail="User is busy")
+    
+    call_id = str(uuid.uuid4())
+    call_doc = {
+        "id": call_id,
+        "caller_id": offer.caller_id,
+        "caller_username": caller["username"],
+        "callee_id": offer.callee_id,
+        "callee_username": callee["username"],
+        "call_type": offer.call_type,
+        "offer": offer.offer,
+        "answer": None,
+        "status": "ringing",  # ringing, active, ended, rejected
+        "started_at": datetime.utcnow(),
+        "ended_at": None,
+        "ice_candidates": {"caller": [], "callee": []}
+    }
+    
+    active_calls[call_id] = call_doc
+    
+    # Store in database for history
+    await db.calls.insert_one(call_doc.copy())
+    
+    # Notify callee about incoming call
+    await manager.send_personal_message({
+        "type": "incoming_call",
+        "call_id": call_id,
+        "caller_id": offer.caller_id,
+        "caller_username": caller["username"],
+        "call_type": offer.call_type,
+        "offer": offer.offer
+    }, offer.callee_id)
+    
+    logger.info(f"Call initiated: {call_id} from {caller['username']} to {callee['username']}")
+    
+    return {
+        "call_id": call_id,
+        "status": "ringing",
+        "callee_username": callee["username"]
+    }
+
+@api_router.post("/calls/answer")
+async def answer_call(answer: CallAnswer):
+    """Answer a call with SDP answer"""
+    if answer.call_id not in active_calls:
+        raise HTTPException(status_code=404, detail="Call not found")
+    
+    call = active_calls[answer.call_id]
+    
+    if call["status"] != "ringing":
+        raise HTTPException(status_code=400, detail="Call is not ringing")
+    
+    call["answer"] = answer.answer
+    call["status"] = "active"
+    call["connected_at"] = datetime.utcnow()
+    
+    # Update in database
+    await db.calls.update_one(
+        {"id": answer.call_id},
+        {"$set": {"answer": answer.answer, "status": "active", "connected_at": datetime.utcnow()}}
+    )
+    
+    # Notify caller that call was answered
+    await manager.send_personal_message({
+        "type": "call_answered",
+        "call_id": answer.call_id,
+        "answer": answer.answer
+    }, call["caller_id"])
+    
+    logger.info(f"Call answered: {answer.call_id}")
+    
+    return {"status": "connected", "call_id": answer.call_id}
+
+@api_router.post("/calls/ice-candidate")
+async def add_ice_candidate(candidate: IceCandidate):
+    """Add ICE candidate for call connection"""
+    if candidate.call_id not in active_calls:
+        raise HTTPException(status_code=404, detail="Call not found")
+    
+    call = active_calls[candidate.call_id]
+    
+    # Determine who sent the candidate and who should receive it
+    if candidate.user_id == call["caller_id"]:
+        call["ice_candidates"]["caller"].append(candidate.candidate)
+        target_id = call["callee_id"]
+    else:
+        call["ice_candidates"]["callee"].append(candidate.candidate)
+        target_id = call["caller_id"]
+    
+    # Forward ICE candidate to the other party
+    await manager.send_personal_message({
+        "type": "ice_candidate",
+        "call_id": candidate.call_id,
+        "candidate": candidate.candidate
+    }, target_id)
+    
+    return {"status": "sent"}
+
+@api_router.post("/calls/action")
+async def call_action(action: CallAction):
+    """Handle call actions: reject, end, toggle_video, toggle_audio"""
+    if action.call_id not in active_calls:
+        # Check database for ended calls
+        call_in_db = await db.calls.find_one({"id": action.call_id})
+        if not call_in_db:
+            raise HTTPException(status_code=404, detail="Call not found")
+        return {"status": "already_ended"}
+    
+    call = active_calls[action.call_id]
+    
+    if action.action == "reject":
+        call["status"] = "rejected"
+        call["ended_at"] = datetime.utcnow()
+        
+        # Update database
+        await db.calls.update_one(
+            {"id": action.call_id},
+            {"$set": {"status": "rejected", "ended_at": datetime.utcnow()}}
+        )
+        
+        # Notify caller
+        await manager.send_personal_message({
+            "type": "call_rejected",
+            "call_id": action.call_id
+        }, call["caller_id"])
+        
+        # Remove from active calls
+        del active_calls[action.call_id]
+        
+        logger.info(f"Call rejected: {action.call_id}")
+        return {"status": "rejected"}
+    
+    elif action.action == "end":
+        call["status"] = "ended"
+        call["ended_at"] = datetime.utcnow()
+        
+        # Calculate duration
+        duration = 0
+        if call.get("connected_at"):
+            duration = (call["ended_at"] - call["connected_at"]).total_seconds()
+        
+        # Update database
+        await db.calls.update_one(
+            {"id": action.call_id},
+            {"$set": {"status": "ended", "ended_at": datetime.utcnow(), "duration": duration}}
+        )
+        
+        # Notify other party
+        other_party = call["callee_id"] if action.user_id == call["caller_id"] else call["caller_id"]
+        await manager.send_personal_message({
+            "type": "call_ended",
+            "call_id": action.call_id,
+            "duration": duration
+        }, other_party)
+        
+        # Remove from active calls
+        del active_calls[action.call_id]
+        
+        logger.info(f"Call ended: {action.call_id}, duration: {duration}s")
+        return {"status": "ended", "duration": duration}
+    
+    elif action.action in ["toggle_video", "toggle_audio", "switch_camera"]:
+        # Notify other party about media state change
+        other_party = call["callee_id"] if action.user_id == call["caller_id"] else call["caller_id"]
+        await manager.send_personal_message({
+            "type": "call_media_update",
+            "call_id": action.call_id,
+            "action": action.action,
+            "user_id": action.user_id
+        }, other_party)
+        
+        return {"status": "updated", "action": action.action}
+    
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action")
+
+@api_router.get("/calls/history/{user_id}")
+async def get_call_history(user_id: str, limit: int = 50):
+    """Get call history for a user"""
+    calls = await db.calls.find({
+        "$or": [{"caller_id": user_id}, {"callee_id": user_id}]
+    }).sort("started_at", -1).limit(limit).to_list(limit)
+    
+    result = []
+    for call in calls:
+        is_caller = call["caller_id"] == user_id
+        other_user = call["callee_username"] if is_caller else call["caller_username"]
+        
+        result.append({
+            "id": call["id"],
+            "other_user": other_user,
+            "other_user_id": call["callee_id"] if is_caller else call["caller_id"],
+            "call_type": call.get("call_type", "video"),
+            "is_outgoing": is_caller,
+            "status": call["status"],
+            "duration": call.get("duration", 0),
+            "started_at": call["started_at"].isoformat() if call.get("started_at") else None,
+            "ended_at": call["ended_at"].isoformat() if call.get("ended_at") else None
+        })
+    
+    return result
+
+@api_router.get("/calls/active/{user_id}")
+async def get_active_call(user_id: str):
+    """Check if user has an active call"""
+    for call_id, call in active_calls.items():
+        if call["status"] in ["ringing", "active"]:
+            if user_id in [call["caller_id"], call["callee_id"]]:
+                return {
+                    "has_active_call": True,
+                    "call_id": call_id,
+                    "status": call["status"],
+                    "call_type": call.get("call_type", "video"),
+                    "is_caller": call["caller_id"] == user_id,
+                    "other_user": call["callee_username"] if call["caller_id"] == user_id else call["caller_username"]
+                }
+    
+    return {"has_active_call": False}
+
 # Include the router in the main app
 app.include_router(api_router)
 

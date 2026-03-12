@@ -347,6 +347,19 @@ export default function ChatScreen() {
             <View style={styles.headerRight}>
               <TouchableOpacity 
                 style={styles.headerButton}
+                onPress={() => {
+                  if (contact) {
+                    router.push({
+                      pathname: '/video-call',
+                      params: { calleeId: contact.id, calleeName: contact.username, callType: 'video' }
+                    });
+                  }
+                }}
+              >
+                <Ionicons name="videocam" size={22} color="#007AFF" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.headerButton}
                 onPress={() => setShowTimerMenu(true)}
               >
                 <Ionicons 
