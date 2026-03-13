@@ -2088,6 +2088,239 @@ async def list_backups(token: str):
 # Import timedelta for admin token expiration
 from datetime import timedelta
 
+# ==================== Server Management API ====================
+
+@api_router.post("/admin/server/clear-cache")
+async def clear_cache(token: str):
+    """Clear server cache and temporary files"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    import shutil
+    import gc
+    
+    cleared_items = []
+    
+    try:
+        # Clear Python garbage collector
+        gc.collect()
+        cleared_items.append("Python GC collected")
+        
+        # Clear pycache
+        pycache_dir = Path("/app/backend/__pycache__")
+        if pycache_dir.exists():
+            shutil.rmtree(pycache_dir)
+            cleared_items.append("__pycache__ cleared")
+        
+        # Clear temp files older than 24h
+        temp_dir = Path("/tmp")
+        import time
+        cutoff = time.time() - 86400  # 24 hours
+        temp_cleared = 0
+        for f in temp_dir.glob("*"):
+            try:
+                if f.is_file() and f.stat().st_mtime < cutoff:
+                    f.unlink()
+                    temp_cleared += 1
+            except:
+                pass
+        if temp_cleared > 0:
+            cleared_items.append(f"{temp_cleared} temp files cleared")
+        
+        logger.info(f"Cache cleared: {cleared_items}")
+        return {"success": True, "cleared": cleared_items}
+    except Exception as e:
+        logger.error(f"Clear cache error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/admin/server/cleanup-db")
+async def cleanup_database(token: str):
+    """Clean up database (remove orphaned data, expired sessions)"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    cleanup_results = {}
+    
+    try:
+        # Remove expired admin tokens
+        expired_count = 0
+        current_time = datetime.utcnow()
+        expired_tokens = [t for t, exp in admin_tokens.items() if exp < current_time]
+        for t in expired_tokens:
+            del admin_tokens[t]
+            expired_count += 1
+        cleanup_results["expired_tokens"] = expired_count
+        
+        # Remove messages older than 30 days for disappearing chats
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        deleted_msgs = await db.messages.delete_many({
+            "disappear_after": {"$exists": True, "$ne": None},
+            "timestamp": {"$lt": thirty_days_ago}
+        })
+        cleanup_results["expired_messages"] = deleted_msgs.deleted_count
+        
+        # Remove orphaned group members (groups that no longer exist)
+        all_group_ids = [g["id"] async for g in db.groups.find({}, {"id": 1})]
+        orphaned = await db.group_members.delete_many({
+            "group_id": {"$nin": all_group_ids}
+        })
+        cleanup_results["orphaned_members"] = orphaned.deleted_count
+        
+        # Get database stats
+        stats = await db.command("dbStats")
+        cleanup_results["db_size_mb"] = round(stats.get("dataSize", 0) / (1024 * 1024), 2)
+        
+        logger.info(f"Database cleanup completed: {cleanup_results}")
+        return {"success": True, "cleanup": cleanup_results}
+    except Exception as e:
+        logger.error(f"Database cleanup error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/admin/server/processes")
+async def get_processes(token: str):
+    """Get running processes info"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    import psutil
+    
+    processes = []
+    for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent', 'status']):
+        try:
+            info = proc.info
+            if info['cpu_percent'] > 0 or info['memory_percent'] > 0.1:
+                processes.append({
+                    "pid": info['pid'],
+                    "name": info['name'],
+                    "cpu_percent": round(info['cpu_percent'], 1),
+                    "memory_percent": round(info['memory_percent'], 1),
+                    "status": info['status']
+                })
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    
+    # Sort by CPU usage
+    processes.sort(key=lambda x: x['cpu_percent'], reverse=True)
+    
+    return {"processes": processes[:20]}  # Top 20 processes
+
+@api_router.get("/admin/server/connections")
+async def get_connections(token: str):
+    """Get active network connections and WebSocket info"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    import psutil
+    
+    # Get network connections
+    connections = []
+    for conn in psutil.net_connections(kind='inet'):
+        if conn.status == 'ESTABLISHED':
+            connections.append({
+                "local": f"{conn.laddr.ip}:{conn.laddr.port}" if conn.laddr else "N/A",
+                "remote": f"{conn.raddr.ip}:{conn.raddr.port}" if conn.raddr else "N/A",
+                "status": conn.status
+            })
+    
+    # Get WebSocket connections count
+    ws_count = len(connected_clients) if 'connected_clients' in dir() else 0
+    
+    return {
+        "network_connections": len(connections),
+        "websocket_connections": ws_count,
+        "active_calls": len(active_calls) if 'active_calls' in dir() else 0,
+        "connections": connections[:50]  # First 50
+    }
+
+@api_router.get("/admin/server/uptime")
+async def get_uptime(token: str):
+    """Get server uptime and boot time"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    import psutil
+    
+    boot_time = datetime.fromtimestamp(psutil.boot_time())
+    uptime = datetime.utcnow() - boot_time
+    
+    days = uptime.days
+    hours, remainder = divmod(uptime.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    
+    return {
+        "boot_time": boot_time.isoformat(),
+        "uptime_seconds": int(uptime.total_seconds()),
+        "uptime_formatted": f"{days}д {hours}ч {minutes}м {seconds}с",
+        "days": days,
+        "hours": hours,
+        "minutes": minutes
+    }
+
+@api_router.get("/admin/db/stats")
+async def get_db_stats(token: str):
+    """Get detailed database statistics"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    try:
+        db_stats = await db.command("dbStats")
+        
+        # Get collection sizes
+        collections_info = []
+        for coll_name in await db.list_collection_names():
+            coll_stats = await db.command("collStats", coll_name)
+            collections_info.append({
+                "name": coll_name,
+                "count": coll_stats.get("count", 0),
+                "size_kb": round(coll_stats.get("size", 0) / 1024, 2),
+                "indexes": coll_stats.get("nindexes", 0)
+            })
+        
+        collections_info.sort(key=lambda x: x["size_kb"], reverse=True)
+        
+        return {
+            "database": os.environ['DB_NAME'],
+            "size_mb": round(db_stats.get("dataSize", 0) / (1024 * 1024), 2),
+            "storage_mb": round(db_stats.get("storageSize", 0) / (1024 * 1024), 2),
+            "collections_count": db_stats.get("collections", 0),
+            "indexes_count": db_stats.get("indexes", 0),
+            "collections": collections_info
+        }
+    except Exception as e:
+        logger.error(f"DB stats error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/admin/db/compact")
+async def compact_database(token: str):
+    """Compact database collections to reclaim space"""
+    if not verify_admin_token(token):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    try:
+        results = []
+        for coll_name in await db.list_collection_names():
+            try:
+                before_stats = await db.command("collStats", coll_name)
+                await db.command("compact", coll_name)
+                after_stats = await db.command("collStats", coll_name)
+                
+                saved = before_stats.get("storageSize", 0) - after_stats.get("storageSize", 0)
+                results.append({
+                    "collection": coll_name,
+                    "saved_kb": round(saved / 1024, 2)
+                })
+            except Exception as e:
+                results.append({
+                    "collection": coll_name,
+                    "error": str(e)
+                })
+        
+        logger.info(f"Database compact completed: {results}")
+        return {"success": True, "results": results}
+    except Exception as e:
+        logger.error(f"Compact error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ==================== Video Call (WebRTC) Models ====================
 
 class CallOffer(BaseModel):

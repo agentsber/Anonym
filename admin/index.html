@@ -747,7 +747,81 @@
                                     </div>
                                 </div>
                                 
-                                <div className="card">
+                                {/* Server Management Section */}
+                                <div className="card" style={{marginTop: '20px'}}>
+                                    <div className="card-header">
+                                        <span className="card-title">Управление сервером</span>
+                                    </div>
+                                    <div style={{padding: '20px', display: 'flex', gap: '12px', flexWrap: 'wrap'}}>
+                                        <button className="action-btn primary" onClick={async () => {
+                                            if (!confirm('Очистить кэш сервера?')) return;
+                                            setLoading(true);
+                                            const res = await fetch(`${API_URL}/admin/server/clear-cache?token=${token}`, { method: 'POST' });
+                                            const data = await res.json();
+                                            alert(data.success ? `Кэш очищен: ${data.cleared.join(', ')}` : 'Ошибка');
+                                            setLoading(false);
+                                        }}>
+                                            <i className="fas fa-broom"></i> Очистить кэш
+                                        </button>
+                                        <button className="action-btn warning" onClick={async () => {
+                                            if (!confirm('Очистить базу данных от устаревших данных?')) return;
+                                            setLoading(true);
+                                            const res = await fetch(`${API_URL}/admin/server/cleanup-db?token=${token}`, { method: 'POST' });
+                                            const data = await res.json();
+                                            if (data.success) {
+                                                alert(`Очистка БД:\n- Токены: ${data.cleanup.expired_tokens}\n- Сообщения: ${data.cleanup.expired_messages}\n- Орфаны: ${data.cleanup.orphaned_members}`);
+                                            }
+                                            setLoading(false);
+                                        }}>
+                                            <i className="fas fa-database"></i> Очистка БД
+                                        </button>
+                                        <button className="action-btn success" onClick={async () => {
+                                            if (!confirm('Сжать базу данных для освобождения места?')) return;
+                                            setLoading(true);
+                                            const res = await fetch(`${API_URL}/admin/db/compact?token=${token}`, { method: 'POST' });
+                                            const data = await res.json();
+                                            if (data.success) {
+                                                const saved = data.results.reduce((acc, r) => acc + (r.saved_kb || 0), 0);
+                                                alert(`Сжатие завершено. Освобождено: ${saved.toFixed(2)} KB`);
+                                            }
+                                            setLoading(false);
+                                        }}>
+                                            <i className="fas fa-compress"></i> Сжать БД
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Server Info */}
+                                <div className="card" style={{marginTop: '20px'}}>
+                                    <div className="card-header">
+                                        <span className="card-title">Информация о сервере</span>
+                                        <button className="action-btn primary" onClick={loadData}>
+                                            <i className="fas fa-refresh"></i> Обновить
+                                        </button>
+                                    </div>
+                                    <div style={{padding: '20px'}}>
+                                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px'}}>
+                                            <div>
+                                                <div className="stat-label">Платформа</div>
+                                                <div style={{fontSize: '16px', marginTop: '4px'}}>{system?.system?.platform || 'N/A'}</div>
+                                            </div>
+                                            <div>
+                                                <div className="stat-label">Python</div>
+                                                <div style={{fontSize: '16px', marginTop: '4px'}}>{system?.system?.python_version || 'N/A'}</div>
+                                            </div>
+                                            <div>
+                                                <div className="stat-label">Hostname</div>
+                                                <div style={{fontSize: '16px', marginTop: '4px'}}>{system?.system?.hostname || 'N/A'}</div>
+                                            </div>
+                                            <div>
+                                                <div className="stat-label">База данных</div>
+                                                <div style={{fontSize: '16px', marginTop: '4px'}}>{system?.database?.name || 'N/A'} ({system?.database?.status})</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="card" style={{marginTop: '20px'}}>
                                     <div className="card-header">
                                         <span className="card-title">Резервные копии</span>
                                         <button className="action-btn primary" onClick={createBackup}>
