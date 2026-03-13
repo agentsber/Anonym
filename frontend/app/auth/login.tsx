@@ -50,12 +50,9 @@ export default function LoginScreen() {
     
     try {
       await login(username);
-      // Use requestAnimationFrame + setTimeout for safe navigation
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          router.replace('/(tabs)');
-        }, 50);
-      });
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 100);
     } catch (err: any) {
       console.log('Login error:', err);
       if (err.message?.includes('No encryption keys') || err.message?.includes('не найдены')) {

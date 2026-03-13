@@ -91,12 +91,9 @@ export default function RegisterScreen() {
     
     try {
       await register(username, email, password);
-      // Use requestAnimationFrame + setTimeout for safe navigation
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          router.replace('/(tabs)');
-        }, 50);
-      });
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 100);
     } catch (err) {
       console.error('Registration failed:', err);
     }
@@ -108,12 +105,9 @@ export default function RegisterScreen() {
     
     try {
       await login(email, password);
-      // Use requestAnimationFrame + setTimeout for safe navigation
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          router.replace('/(tabs)');
-        }, 50);
-      });
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 100);
     } catch (err) {
       console.error('Login failed:', err);
     }

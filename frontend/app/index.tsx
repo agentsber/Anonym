@@ -18,22 +18,16 @@ const COLORS = {
 
 export default function WelcomeScreen() {
   const { user, isInitialized } = useAuthStore();
-  const [isNavigating, setIsNavigating] = React.useState(false);
 
   React.useEffect(() => {
     // Wait for auth to initialize, then redirect if user exists
-    // Only redirect if not already navigating
-    if (isInitialized && user && !isNavigating) {
+    if (isInitialized && user) {
       console.log('User found, redirecting to tabs...', user.username);
-      setIsNavigating(true);
-      // Use requestAnimationFrame + setTimeout for better timing
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          router.replace('/(tabs)');
-        }, 50);
-      });
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 100);
     }
-  }, [user, isInitialized, isNavigating]);
+  }, [user, isInitialized]);
 
   return (
     <View style={styles.container}>
