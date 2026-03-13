@@ -4,7 +4,7 @@
 Разработка защищённого Android-мессенджера с E2E шифрованием.
 
 ## Platform & Tech Stack
-- **Frontend:** React Native (Expo), TypeScript, Zustand, expo-router
+- **Frontend:** React Native (Expo SDK 51), TypeScript, Zustand, expo-router
 - **Backend:** Python, FastAPI, MongoDB, python-socketio
 - **Deployment:** Docker, docker-compose, EAS Build (APK)
 
@@ -18,118 +18,40 @@
 - [x] Reply to message
 - [x] Edit/delete messages
 - [x] Message forwarding
-- [x] Group chats with advanced features:
-  - Edit/delete own messages
-  - Pin/unpin messages
-  - Assign/unassign admins
-  - Ban/unban users
-  - Search within chat
-  - View group info
-  - Send media files (images/videos)
+- [x] Group chats with advanced features
 - [x] Voice messages
 - [x] Stickers
-- [x] Modern dark theme (COMPLETED - 2025-02-22)
+- [x] Modern dark theme
 - [x] Docker deployment setup
 - [x] Custom splash screen
-- [x] **Video Calls with E2E Encryption (COMPLETED - 2025-02-22)**
-  - WebRTC peer-to-peer video/audio calls
-  - Toggle camera/microphone
-  - Switch front/rear camera
-  - Incoming call overlay with accept/reject
-  - Call history
+- [x] Video Calls with WebRTC (partially implemented)
+- [x] Admin Panel
 
-## Dark Theme Implementation (2025-02-22)
-All screens now use consistent dark theme:
-- Background: #0A0A0A
-- Surface: #1A1A1A
-- Surface Light: #252525
-- Primary: #6C5CE7
-- Primary Light: #A29BFE
-- Text: #FFFFFF
-- Text Secondary: #8E8E93
-- Text Muted: #555555
-- Border: #333333
+## Dependency Fix (2026-03-13)
+### Problem
+APK build consistently failed due to incompatibility between:
+- Expo SDK 54/53 uses `expo-modules-core` with `"main": "src/index.ts"` (TypeScript source)
+- Node.js 20 cannot execute `.ts` files directly
+- This caused `ERR_UNKNOWN_FILE_EXTENSION` errors
 
-**Files updated:**
-- `/app/frontend/app/_layout.tsx`
-- `/app/frontend/app/auth/login.tsx`
-- `/app/frontend/app/search.tsx`
-- `/app/frontend/app/security/lock.tsx`
-- `/app/frontend/app/security/setup-pin.tsx`
-- `/app/frontend/src/components/ChatBubble.tsx`
+### Solution
+Downgraded to **Expo SDK 51** which uses:
+- `expo-modules-core@1.12.26` with `"main": "build/index.js"` (compiled JS)
+- React Native 0.74.5
+- React 18.2.0
 
-## Future Tasks (Backlog)
-- [ ] **P2** Screenshot Protection: Implement `FLAG_SECURE` on Android
-
-## Completed Tasks
-- [x] **P3** Data Wipe on Incorrect PIN: Track failed PIN attempts and wipe data after threshold (COMPLETED - 2025-02-22)
-- [x] **P3** Certificate Pinning: Enhanced security against MITM attacks (COMPLETED - 2025-02-22)
-- [x] **Deployment Preparation** - Full production deployment setup (COMPLETED - 2025-02-22)
-
-## P3 Features Implemented (2025-02-22)
-
-### Data Wipe on Failed PIN Attempts
-- Added `isWipeEnabled` и `isDataWiped` states to securityStore
-- `enableWipeOnMaxAttempts()` function to toggle the feature
-- `wipeAllData()` function that clears all AsyncStorage data
-- Updated `verifyPin()` to trigger wipe after 5 failed attempts (if enabled)
-- UI toggle in Settings (shows only when PIN is set)
-- Warning messages in Lock screen when attempts are running low
-
-**Files updated:**
-- `src/stores/securityStore.ts` - Added wipe logic
-- `app/security/lock.tsx` - Warning messages
-- `app/(tabs)/settings.tsx` - Toggle switch for auto-wipe
-
-## Admin Panel (Completed 2025-02-22)
-
-### Features
-- **Dashboard:** Статистика пользователей, групп, сообщений
-- **Users Management:** Просмотр, бан/разбан, удаление пользователей
-- **Groups Management:** Просмотр и удаление групп
-- **Server Logs:** Просмотр логов в реальном времени
-- **System Info:** CPU, память, диск
-- **Backups:** Создание и просмотр резервных копий
-
-### Access
-- URL: `https://your-domain.com/admin`
-- Default credentials: `admin / admin123`
-- Credentials can be changed via env vars: `ADMIN_USERNAME`, `ADMIN_PASSWORD`
-
-### API Endpoints
-- `POST /api/admin/login` - Login
-- `GET /api/admin/stats` - Statistics
-- `GET /api/admin/users` - List users
-- `POST /api/admin/users/{id}/ban` - Ban user
-- `DELETE /api/admin/users/{id}` - Delete user
-- `GET /api/admin/groups` - List groups
-- `DELETE /api/admin/groups/{id}` - Delete group
-- `GET /api/admin/logs` - Server logs
-- `GET /api/admin/system` - System info
-- `POST /api/admin/backup` - Create backup
-- `GET /api/admin/backups` - List backups
-
-### Files
-- `/app/admin/index.html` - Admin panel SPA
-- `/app/backend/server.py` - Admin API endpoints
-
-## Refactoring (Completed 2025-02-22)
-Файл `group/[groupId].tsx` был разбит на 12 компонентов в `/app/frontend/src/components/group-chat/`:
-- `MessageItem.tsx` - Компонент сообщения (text, image, voice, sticker)
-- `MessageMenu.tsx` - Модальное меню действий с сообщением
-- `InputToolbar.tsx` - Панель ввода сообщения
-- `ReplyBar.tsx` - Превью ответа на сообщение
-- `EditBar.tsx` - Панель редактирования сообщения
-- `RecordingBar.tsx` - Панель записи голосового сообщения
-- `StickerPanel.tsx` - Панель выбора стикеров
-- `PinnedMessagesModal.tsx` - Модалка закреплённых сообщений
-- `ForwardModal.tsx` - Модалка пересылки сообщений
-- `SearchBar.tsx` - Поиск по сообщениям
-- `colors.ts` - Единая цветовая схема
-- `types.ts` - TypeScript типы для всех компонентов
-- `index.ts` - Barrel export
-
-**Результат:** Файл уменьшен с 1064 до ~350 строк (на 67%)
+### Verified Working Dependencies
+```json
+{
+  "expo": "~51.0.0",
+  "react": "18.2.0",
+  "react-native": "0.74.5",
+  "expo-router": "~3.5.24",
+  "react-native-gesture-handler": "~2.16.1",
+  "react-native-safe-area-context": "4.10.5",
+  "react-native-screens": "3.31.1"
+}
+```
 
 ## Architecture
 ```
@@ -137,71 +59,57 @@ All screens now use consistent dark theme:
 ├── backend/
 │   ├── Dockerfile
 │   ├── server.py
+│   ├── admin/
+│   │   ├── index.html
+│   │   ├── script.js
+│   │   └── style.css
 │   └── requirements.txt
 ├── frontend/
-│   ├── Dockerfile
 │   ├── app/
-│   │   ├── (tabs)/ - Main tabs (chats, settings)
+│   │   ├── (tabs)/ - Main tabs
 │   │   ├── auth/ - Login/Register
 │   │   ├── chat/ - 1-on-1 chats
 │   │   ├── group/ - Group chats
-│   │   ├── security/ - PIN lock screens
-│   │   └── search.tsx
+│   │   ├── security/ - PIN lock
+│   │   └── video-call.tsx
 │   ├── src/
-│   │   ├── services/api.ts
+│   │   ├── services/
 │   │   ├── stores/
-│   │   └── types/
+│   │   └── components/
 │   └── assets/
-├── docker-compose.yml
-└── README.md
+├── BUILD_ANDROID.md
+├── BUILD_IOS.md
+├── DEPLOY.md
+└── docker-compose.yml
 ```
 
+## Admin Panel
+- **URL:** `http://your-server/admin`
+- **Credentials:** Configured via `ADMIN_USERNAME`, `ADMIN_PASSWORD` env vars
+- **Features:** User management, Groups, Server logs, System info, Backups
+
+## Backend Deployment (User Server)
+- **Server IP:** 5.42.101.121
+- **Port:** 8001
+- **Admin Panel:** http://5.42.101.121/admin
+
+## Future Tasks (Backlog)
+- [ ] **P0** Test Video Calls on mobile device
+- [ ] **P1** Complete Admin Panel enhancements
+- [ ] **P2** Screenshot Protection (FLAG_SECURE)
+- [ ] **P2** iOS build and testing
+
 ## Key API Endpoints
-- `/api/groups/create` - Create group
-- `/api/groups/{id}/manage` - Manage group
-- `/api/groups/{id}/messages` - Group messages
-- `/api/messages/{id}` - Edit/delete message
-- `/api/messages/{id}/pin` - Pin message
-- `/api/messages/forward` - Forward message
-- `/api/media/upload` - Upload media
-- `/api/stickers` - Get sticker packs
+- `/api/auth/register` - Register user
+- `/api/auth/login` - Login
+- `/api/users/search` - Search users
+- `/api/messages/send` - Send message
+- `/api/groups/*` - Group operations
+- `/api/calls/*` - Video call signaling
+- `/api/admin/*` - Admin panel API
 
 ## Database Schema
 - **users:** `{_id, username, email, password_hash, contacts, last_seen}`
-
-
-## Production Deployment Setup (Completed 2025-02-22)
-
-### Файлы деплоя
-- `/app/DEPLOY.md` - Полное руководство по развертыванию на своём сервере
-- `/app/docker-compose.yml` - Development конфигурация
-- `/app/docker-compose.prod.yml` - Production конфигурация  
-- `/app/deploy.sh` - Скрипт управления деплоем
-- `/app/.env.example` - Пример переменных окружения
-- `/app/backend/.env.prod.example` - Backend production env
-- `/app/frontend/.env.prod.example` - Frontend production env
-- `/app/nginx/nginx.conf` - Nginx конфигурация с SSL и WebSocket
-
-### Команды деплоя
-```bash
-./deploy.sh setup     # Начальная настройка
-./deploy.sh build     # Сборка контейнеров
-./deploy.sh start     # Запуск
-./deploy.sh stop      # Остановка
-./deploy.sh restart   # Перезапуск
-./deploy.sh logs      # Просмотр логов
-./deploy.sh backup    # Бэкап MongoDB
-./deploy.sh restore   # Восстановление
-./deploy.sh ssl       # Установка Let's Encrypt SSL
-```
-
-### Сборка APK
-```bash
-cd frontend
-cp .env.prod.example .env
-# Изменить EXPO_PUBLIC_BACKEND_URL на ваш домен
-eas build -p android --profile preview
-```
-
 - **groups:** `{_id, name, owner, members, admins, banned_users, pinned_messages}`
-- **messages:** `{_id, sender, receiver, content, timestamp, type, status, is_edited...}`
+- **messages:** `{_id, sender, receiver, content, timestamp, type, status}`
+- **calls:** `{_id, caller_id, callee_id, status, started_at, ended_at}`

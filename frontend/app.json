@@ -17,10 +17,7 @@
         "NSPhotoLibraryUsageDescription": "Выбор медиа для отправки",
         "NSMicrophoneUsageDescription": "Запись голосовых сообщений и видеозвонки",
         "NSFaceIDUsageDescription": "Разблокировка приложения",
-        "UIBackgroundModes": [
-          "voip",
-          "audio"
-        ]
+        "UIBackgroundModes": ["voip", "audio"]
       }
     },
     "android": {
@@ -30,7 +27,6 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
-      "edgeToEdgeEnabled": true,
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
@@ -75,8 +71,7 @@
         }
       ],
       "expo-font",
-      "expo-secure-store",
-      "expo-web-browser"
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true
