@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   },
   buttons: {
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 60,
   },
   primaryButton: {
     borderRadius: 16,
