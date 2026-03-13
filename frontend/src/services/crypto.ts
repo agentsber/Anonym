@@ -1,6 +1,17 @@
 import nacl from 'tweetnacl';
 import { encodeBase64, decodeBase64, encodeUTF8, decodeUTF8 } from 'tweetnacl-util';
+import * as Crypto from 'expo-crypto';
 import { KeyPair, CryptoKeys } from '../types';
+
+// Setup PRNG for tweetnacl in React Native
+// This is required because React Native doesn't have crypto.getRandomValues by default
+nacl.setPRNG((x: Uint8Array, n: number) => {
+  // Use expo-crypto for secure random bytes
+  const randomBytes = Crypto.getRandomBytes(n);
+  for (let i = 0; i < n; i++) {
+    x[i] = randomBytes[i];
+  }
+});
 
 // Generate a new key pair using Curve25519
 export const generateKeyPair = (): KeyPair => {
