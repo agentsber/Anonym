@@ -91,11 +91,16 @@ export default function RegisterScreen() {
     
     try {
       await register(username, email, password);
-      setTimeout(() => {
-        router.replace('/(tabs)');
-      }, 100);
-    } catch (err) {
+      // Only navigate if registration was successful
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        setTimeout(() => {
+          router.replace('/(tabs)');
+        }, 100);
+      }
+    } catch (err: any) {
       console.error('Registration failed:', err);
+      // Error is already set in authStore, no need to navigate
     }
   };
 
@@ -105,11 +110,16 @@ export default function RegisterScreen() {
     
     try {
       await login(email, password);
-      setTimeout(() => {
-        router.replace('/(tabs)');
-      }, 100);
-    } catch (err) {
+      // Only navigate if login was successful
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        setTimeout(() => {
+          router.replace('/(tabs)');
+        }, 100);
+      }
+    } catch (err: any) {
       console.error('Login failed:', err);
+      // Error is already set in authStore, no need to navigate
     }
   };
 
