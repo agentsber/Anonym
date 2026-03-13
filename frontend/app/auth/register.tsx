@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -84,10 +85,22 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     clearError();
-    if (!username || !email || !password || !confirmPassword) return;
-    if (!validateEmail(email)) return;
-    if (password !== confirmPassword) return;
-    if (password.length < 6) return;
+    if (!username || !email || !password || !confirmPassword) {
+      Alert.alert('Ошибка', 'Заполните все поля');
+      return;
+    }
+    if (!validateEmail(email)) {
+      Alert.alert('Ошибка', 'Введите корректный email');
+      return;
+    }
+    if (password !== confirmPassword) {
+      Alert.alert('Ошибка', 'Пароли не совпадают');
+      return;
+    }
+    if (password.length < 6) {
+      Alert.alert('Ошибка', 'Пароль должен быть минимум 6 символов');
+      return;
+    }
     
     try {
       await register(username, email, password);
@@ -100,13 +113,17 @@ export default function RegisterScreen() {
       }
     } catch (err: any) {
       console.error('Registration failed:', err);
-      // Error is already set in authStore, no need to navigate
+      const errorMsg = err.response?.data?.detail || err.message || 'Ошибка регистрации. Проверьте подключение к сети.';
+      Alert.alert('Ошибка регистрации', errorMsg);
     }
   };
 
   const handleLogin = async () => {
     clearError();
-    if (!email || !password) return;
+    if (!email || !password) {
+      Alert.alert('Ошибка', 'Введите email и пароль');
+      return;
+    }
     
     try {
       await login(email, password);
@@ -119,7 +136,8 @@ export default function RegisterScreen() {
       }
     } catch (err: any) {
       console.error('Login failed:', err);
-      // Error is already set in authStore, no need to navigate
+      const errorMsg = err.response?.data?.detail || err.message || 'Ошибка входа. Проверьте подключение к сети.';
+      Alert.alert('Ошибка входа', errorMsg);
     }
   };
 
