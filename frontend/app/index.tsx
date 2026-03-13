@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +18,103 @@ const COLORS = {
 
 export default function WelcomeScreen() {
   const { user, isInitialized } = useAuthStore();
+  
+  // Animation values
+  const logoScale = useRef(new Animated.Value(0)).current;
+  const logoRotate = useRef(new Animated.Value(0)).current;
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const titleTranslateY = useRef(new Animated.Value(30)).current;
+  const subtitleOpacity = useRef(new Animated.Value(0)).current;
+  const featuresOpacity = useRef(new Animated.Value(0)).current;
+  const featuresTranslateY = useRef(new Animated.Value(40)).current;
+  const buttonsOpacity = useRef(new Animated.Value(0)).current;
+  const buttonsTranslateY = useRef(new Animated.Value(50)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Sequential animation on mount
+    Animated.sequence([
+      // Logo bounce in with rotation
+      Animated.parallel([
+        Animated.spring(logoScale, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoRotate, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.out(Easing.back(1.5)),
+          useNativeDriver: true,
+        }),
+      ]),
+      // Title fade in
+      Animated.parallel([
+        Animated.timing(titleOpacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(titleTranslateY, {
+          toValue: 0,
+          duration: 400,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+      // Subtitle fade in
+      Animated.timing(subtitleOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      // Features slide in
+      Animated.parallel([
+        Animated.timing(featuresOpacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(featuresTranslateY, {
+          toValue: 0,
+          duration: 400,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+      // Buttons slide in
+      Animated.parallel([
+        Animated.timing(buttonsOpacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(buttonsTranslateY, {
+          toValue: 0,
+          duration: 400,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, []);
+
+  const handleButtonPressIn = () => {
+    Animated.spring(buttonScale, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleButtonPressOut = () => {
+    Animated.spring(buttonScale, {
+      toValue: 1,
+      friction: 3,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  };
 
   React.useEffect(() => {
     // Wait for auth to initialize, then redirect if user exists
@@ -29,25 +126,55 @@ export default function WelcomeScreen() {
     }
   }, [user, isInitialized]);
 
+  const spin = logoRotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
-          <View style={styles.logoContainer}>
+          <Animated.View style={[
+            styles.logoContainer,
+            {
+              transform: [
+                { scale: logoScale },
+                { rotate: spin },
+              ],
+            },
+          ]}>
             <LinearGradient
               colors={[COLORS.primary, COLORS.primaryLight]}
               style={styles.logo}
             >
               <Ionicons name="shield-checkmark" size={64} color="#FFFFFF" />
             </LinearGradient>
-          </View>
+          </Animated.View>
           
-          <Text style={styles.title}>Anonym X</Text>
-          <Text style={styles.subtitle}>
+          <Animated.Text style={[
+            styles.title,
+            {
+              opacity: titleOpacity,
+              transform: [{ translateY: titleTranslateY }],
+            },
+          ]}>
+            Anonym X
+          </Animated.Text>
+          <Animated.Text style={[
+            styles.subtitle,
+            { opacity: subtitleOpacity },
+          ]}>
             Безопасный мессенджер{'\n'}со сквозным шифрованием
-          </Text>
+          </Animated.Text>
           
-          <View style={styles.features}>
+          <Animated.View style={[
+            styles.features,
+            {
+              opacity: featuresOpacity,
+              transform: [{ translateY: featuresTranslateY }],
+            },
+          ]}>
             <View style={styles.featureItem}>
               <View style={styles.featureIcon}>
                 <Ionicons name="lock-closed" size={22} color={COLORS.primary} />
@@ -66,23 +193,34 @@ export default function WelcomeScreen() {
               </View>
               <Text style={styles.featureText}>Локальные{'\n'}ключи</Text>
             </View>
-          </View>
+          </Animated.View>
         </View>
         
-        <View style={styles.buttons}>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => router.push('/auth/register')}
-          >
-            <LinearGradient
-              colors={[COLORS.primary, COLORS.primaryLight]}
-              style={styles.buttonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+        <Animated.View style={[
+          styles.buttons,
+          {
+            opacity: buttonsOpacity,
+            transform: [{ translateY: buttonsTranslateY }],
+          },
+        ]}>
+          <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => router.push('/auth/register')}
+              onPressIn={handleButtonPressIn}
+              onPressOut={handleButtonPressOut}
+              activeOpacity={1}
             >
-              <Text style={styles.primaryButtonText}>Начать</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryLight]}
+                style={styles.buttonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.primaryButtonText}>Начать</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
           
           <TouchableOpacity
             style={styles.secondaryButton}
@@ -90,7 +228,7 @@ export default function WelcomeScreen() {
           >
             <Text style={styles.secondaryButtonText}>У меня уже есть аккаунт</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </SafeAreaView>
     </View>
   );

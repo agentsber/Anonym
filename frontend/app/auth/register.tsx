@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Animated,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -40,6 +42,62 @@ export default function RegisterScreen() {
   
   const { register, login, isLoading, error, clearError } = useAuthStore();
 
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const logoScale = useRef(new Animated.Value(0.5)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Initial animations
+    Animated.parallel([
+      Animated.spring(logoScale, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  // Shake animation for errors
+  const triggerShake = () => {
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const handleButtonPressIn = () => {
+    Animated.spring(buttonScale, {
+      toValue: 0.95,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleButtonPressOut = () => {
+    Animated.spring(buttonScale, {
+      toValue: 1,
+      friction: 3,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  };
+
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
@@ -53,18 +111,22 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     clearError();
     if (!email || !password || !confirmPassword) {
+      triggerShake();
       Alert.alert('Ошибка', 'Заполните все поля');
       return;
     }
     if (!validateEmail(email)) {
+      triggerShake();
       Alert.alert('Ошибка', 'Введите корректный email');
       return;
     }
     if (password !== confirmPassword) {
+      triggerShake();
       Alert.alert('Ошибка', 'Пароли не совпадают');
       return;
     }
     if (password.length < 6) {
+      triggerShake();
       Alert.alert('Ошибка', 'Пароль должен быть минимум 6 символов');
       return;
     }
@@ -81,6 +143,7 @@ export default function RegisterScreen() {
       }
     } catch (err: any) {
       console.error('Registration failed:', err);
+      triggerShake();
       const errorMsg = err.response?.data?.detail || err.message || 'Ошибка регистрации. Проверьте подключение к сети.';
       Alert.alert('Ошибка регистрации', errorMsg);
     }
@@ -89,6 +152,7 @@ export default function RegisterScreen() {
   const handleLogin = async () => {
     clearError();
     if (!email || !password) {
+      triggerShake();
       Alert.alert('Ошибка', 'Введите email и пароль');
       return;
     }
@@ -104,6 +168,7 @@ export default function RegisterScreen() {
       }
     } catch (err: any) {
       console.error('Login failed:', err);
+      triggerShake();
       const errorMsg = err.response?.data?.detail || err.message || 'Ошибка входа. Проверьте подключение к сети.';
       Alert.alert('Ошибка входа', errorMsg);
     }
