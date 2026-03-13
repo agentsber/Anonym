@@ -14,7 +14,7 @@ import {
   Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../src/stores/authStore';
@@ -34,7 +34,8 @@ const COLORS = {
 };
 
 export default function RegisterScreen() {
-  const [step, setStep] = useState<'register' | 'login'>('register');
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const [step, setStep] = useState<'register' | 'login'>(mode === 'login' ? 'login' : 'register');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

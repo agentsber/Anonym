@@ -224,7 +224,7 @@ export default function WelcomeScreen() {
           
           <TouchableOpacity
             style={styles.secondaryButton}
-            onPress={() => router.push('/auth/login')}
+            onPress={() => router.push('/auth/register?mode=login')}
           >
             <Text style={styles.secondaryButtonText}>У меня уже есть аккаунт</Text>
           </TouchableOpacity>
