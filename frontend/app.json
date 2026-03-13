@@ -17,7 +17,10 @@
         "NSPhotoLibraryUsageDescription": "Выбор медиа для отправки",
         "NSMicrophoneUsageDescription": "Запись голосовых сообщений и видеозвонки",
         "NSFaceIDUsageDescription": "Разблокировка приложения",
-        "UIBackgroundModes": ["voip", "audio"]
+        "UIBackgroundModes": [
+          "voip",
+          "audio"
+        ]
       }
     },
     "android": {
@@ -70,7 +73,10 @@
         {
           "microphonePermission": "Разрешить доступ к микрофону для голосовых сообщений и видеозвонков"
         }
-      ]
+      ],
+      "expo-font",
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
