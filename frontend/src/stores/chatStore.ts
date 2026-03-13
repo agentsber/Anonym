@@ -24,7 +24,9 @@ interface ChatState {
     content: string,
     senderSecretKey: string,
     receiverPublicKey: string,
-    messageType?: 'text' | 'image' | 'video'
+    messageType?: 'text' | 'image' | 'video',
+    replyToId?: string,
+    autoDeleteSeconds?: number
   ) => Promise<void>;
   sendMedia: (
     senderId: string,
@@ -40,6 +42,8 @@ interface ChatState {
   getMessages: (contactId: string) => Message[];
   loadLocalMessages: (userId: string) => Promise<void>;
   saveLocalMessages: (userId: string) => Promise<void>;
+  updateMessage: (contactId: string, messageId: string, updates: Partial<Message>) => void;
+  deleteMessage: (contactId: string, messageId: string) => void;
   clearError: () => void;
 }
 
@@ -84,7 +88,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     content: string,
     senderSecretKey: string,
     receiverPublicKey: string,
-    messageType: 'text' | 'image' | 'video' = 'text'
+    messageType: 'text' | 'image' | 'video' = 'text',
+    replyToId?: string,
+    autoDeleteSeconds?: number
   ) => {
     try {
       // Generate local message ID
@@ -329,6 +335,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
     } catch (error) {
       console.error('Failed to save local messages:', error);
     }
+  },
+
+  updateMessage: (contactId: string, messageId: string, updates: Partial<Message>) => {
+    const { chats } = get();
+    const messages = chats.get(contactId) || [];
+    const updatedMessages = messages.map(msg => 
+      msg.id === messageId ? { ...msg, ...updates } : msg
+    );
+    const newChats = new Map(chats);
+    newChats.set(contactId, updatedMessages);
+    set({ chats: newChats });
+  },
+
+  deleteMessage: (contactId: string, messageId: string) => {
+    const { chats } = get();
+    const messages = chats.get(contactId) || [];
+    const filteredMessages = messages.filter(msg => msg.id !== messageId);
+    const newChats = new Map(chats);
+    newChats.set(contactId, filteredMessages);
+    set({ chats: newChats });
   },
 
   clearError: () => set({ error: null }),

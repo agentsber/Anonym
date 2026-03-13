@@ -139,9 +139,9 @@ export default function SettingsScreen() {
   };
 
   // Generate avatar color based on username
-  const getAvatarColors = () => {
+  const getAvatarColors = (): [string, string] => {
     if (!user?.username) return [COLORS.primary, COLORS.primaryLight];
-    const colors = [
+    const colors: [string, string][] = [
       [COLORS.primary, COLORS.primaryLight],
       ['#00D9A5', '#00B894'],
       ['#FF6B6B', '#EE5A24'],

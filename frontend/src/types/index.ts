@@ -6,6 +6,7 @@ export interface User {
   identity_key: string;
   signed_prekey: string;
   prekey_signature: string;
+  exchangeSecretKey?: string;
   created_at?: string;
   online?: boolean;
   last_seen?: string;

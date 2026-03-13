@@ -186,6 +186,3 @@ export function getCertificatePinningStatus(): CertificatePinningStatus {
     configuredHosts: Object.keys(currentConfig.hosts),
   };
 }
-
-// Export types
-export type { PinningConfig };

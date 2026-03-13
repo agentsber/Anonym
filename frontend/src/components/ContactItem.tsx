@@ -47,8 +47,8 @@ export const ContactItem: React.FC<ContactItemProps> = ({
   };
 
   // Generate avatar color based on username
-  const getAvatarColor = (name: string) => {
-    const colors = [
+  const getAvatarColor = (name: string): [string, string] => {
+    const colors: [string, string][] = [
       ['#6C5CE7', '#A29BFE'],
       ['#00D9A5', '#00B894'],
       ['#FF6B6B', '#EE5A24'],
@@ -86,7 +86,7 @@ export const ContactItem: React.FC<ContactItemProps> = ({
         </View>
         
         <View style={styles.messageRow}>
-          {lastMessage?.type === 'media' ? (
+          {lastMessage?.message_type === 'image' || lastMessage?.message_type === 'video' ? (
             <View style={styles.mediaPreview}>
               <Ionicons name="image" size={14} color={COLORS.textSecondary} />
               <Text style={styles.lastMessage}>Фото</Text>

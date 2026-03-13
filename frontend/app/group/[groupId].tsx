@@ -79,7 +79,7 @@ export default function GroupChatScreen() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isAdmin = group?.members?.some(m => m.user_id === user?.id && m.role === 'admin');
 
