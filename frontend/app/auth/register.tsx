@@ -91,7 +91,12 @@ export default function RegisterScreen() {
     
     try {
       await register(username, email, password);
-      router.replace('/(tabs)');
+      // Use requestAnimationFrame + setTimeout for safe navigation
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          router.replace('/(tabs)');
+        }, 50);
+      });
     } catch (err) {
       console.error('Registration failed:', err);
     }
@@ -103,7 +108,12 @@ export default function RegisterScreen() {
     
     try {
       await login(email, password);
-      router.replace('/(tabs)');
+      // Use requestAnimationFrame + setTimeout for safe navigation
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          router.replace('/(tabs)');
+        }, 50);
+      });
     } catch (err) {
       console.error('Login failed:', err);
     }
@@ -512,8 +522,9 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   footer: {
-    padding: 24,
-    paddingBottom: 16,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 32,
   },
   button: {
     borderRadius: 16,

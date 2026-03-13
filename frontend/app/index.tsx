@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,16 +17,23 @@ const COLORS = {
 };
 
 export default function WelcomeScreen() {
-  const router = useRouter();
   const { user, isInitialized } = useAuthStore();
+  const [isNavigating, setIsNavigating] = React.useState(false);
 
   React.useEffect(() => {
     // Wait for auth to initialize, then redirect if user exists
-    if (isInitialized && user) {
+    // Only redirect if not already navigating
+    if (isInitialized && user && !isNavigating) {
       console.log('User found, redirecting to tabs...', user.username);
-      router.replace('/(tabs)');
+      setIsNavigating(true);
+      // Use requestAnimationFrame + setTimeout for better timing
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          router.replace('/(tabs)');
+        }, 50);
+      });
     }
-  }, [user, isInitialized]);
+  }, [user, isInitialized, isNavigating]);
 
   return (
     <View style={styles.container}>
@@ -160,7 +167,7 @@ const styles = StyleSheet.create({
   },
   buttons: {
     paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingBottom: 40,
   },
   primaryButton: {
     borderRadius: 16,

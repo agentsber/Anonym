@@ -50,7 +50,12 @@ export default function LoginScreen() {
     
     try {
       await login(username);
-      router.replace('/(tabs)');
+      // Use requestAnimationFrame + setTimeout for safe navigation
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          router.replace('/(tabs)');
+        }, 50);
+      });
     } catch (err: any) {
       console.log('Login error:', err);
       if (err.message?.includes('No encryption keys') || err.message?.includes('не найдены')) {
@@ -241,8 +246,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   footer: {
-    padding: 24,
-    paddingBottom: 16,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 32,
   },
   button: {
     borderRadius: 16,
