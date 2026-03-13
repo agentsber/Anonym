@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,6 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../src/stores/authStore';
-import { authApi } from '../../src/services/api';
 
 const COLORS = {
   background: '#0A0A0A',
@@ -34,58 +33,26 @@ const COLORS = {
 
 export default function RegisterScreen() {
   const [step, setStep] = useState<'register' | 'login'>('register');
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
-  const [isUsernameAvailable, setIsUsernameAvailable] = useState<boolean | null>(null);
   
   const { register, login, isLoading, error, clearError } = useAuthStore();
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const checkUsernameAvailability = useCallback(async (name: string) => {
-    if (name.length < 3) {
-      setIsUsernameAvailable(null);
-      return;
-    }
-    
-    // Clear previous timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    
-    // Set new timeout for debounce
-    timeoutRef.current = setTimeout(async () => {
-      setIsChecking(true);
-      try {
-        const available = await authApi.checkUsername(name);
-        setIsUsernameAvailable(available);
-      } catch (err) {
-        console.error('Error checking username:', err);
-      } finally {
-        setIsChecking(false);
-      }
-    }, 500);
-  }, []);
-
-  const handleUsernameChange = (text: string) => {
-    const cleaned = text.toLowerCase().replace(/[^a-z0-9]/g, '');
-    setUsername(cleaned);
-    setIsUsernameAvailable(null);
-    if (cleaned.length >= 3) {
-      checkUsernameAvailability(cleaned);
-    }
-  };
 
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
+  // Generate username from email
+  const generateUsername = (email: string) => {
+    const localPart = email.split('@')[0];
+    return localPart.toLowerCase().replace(/[^a-z0-9]/g, '') + Math.floor(Math.random() * 1000);
+  };
+
   const handleRegister = async () => {
     clearError();
-    if (!username || !email || !password || !confirmPassword) {
+    if (!email || !password || !confirmPassword) {
       Alert.alert('Ошибка', 'Заполните все поля');
       return;
     }
@@ -103,6 +70,7 @@ export default function RegisterScreen() {
     }
     
     try {
+      const username = generateUsername(email);
       await register(username, email, password);
       // Only navigate if registration was successful
       const currentUser = useAuthStore.getState().user;
@@ -141,22 +109,7 @@ export default function RegisterScreen() {
     }
   };
 
-  const getUsernameStatusIcon = () => {
-    if (isChecking) {
-      return <ActivityIndicator size="small" color={COLORS.primary} />;
-    }
-    if (isUsernameAvailable === true) {
-      return <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />;
-    }
-    if (isUsernameAvailable === false) {
-      return <Ionicons name="close-circle" size={22} color={COLORS.error} />;
-    }
-    return null;
-  };
-
   const canRegister = 
-    username.length >= 3 && 
-    isUsernameAvailable === true && 
     validateEmail(email) &&
     password.length >= 6 && 
     password === confirmPassword &&
@@ -284,31 +237,6 @@ export default function RegisterScreen() {
               <Text style={styles.description}>
                 Безопасный мессенджер с{'\n'}E2E шифрованием
               </Text>
-              
-              {/* Username */}
-              <View style={styles.inputContainer}>
-                <Ionicons name="at" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Имя пользователя"
-                  placeholderTextColor={COLORS.textMuted}
-                  value={username}
-                  onChangeText={handleUsernameChange}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  maxLength={30}
-                />
-                <View style={styles.statusIcon}>
-                  {getUsernameStatusIcon()}
-                </View>
-              </View>
-              
-              {username.length > 0 && username.length < 3 && (
-                <Text style={styles.hint}>Минимум 3 символа</Text>
-              )}
-              {isUsernameAvailable === false && (
-                <Text style={styles.errorHint}>Имя уже занято</Text>
-              )}
               
               {/* Email */}
               <View style={styles.inputContainer}>
