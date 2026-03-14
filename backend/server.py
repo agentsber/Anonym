@@ -413,6 +413,94 @@ async def get_user(user_id: str):
         prekey_signature=user["prekey_signature"]
     )
 
+class ProfileUpdate(BaseModel):
+    username: Optional[str] = None
+    display_name: Optional[str] = None
+    bio: Optional[str] = None
+    birthday: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+@api_router.put("/users/{user_id}/profile")
+async def update_profile(user_id: str, profile: ProfileUpdate):
+    """Update user profile"""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    update_data = {}
+    
+    # Check if username is being changed
+    if profile.username and profile.username != user.get("username"):
+        # Validate username format
+        if len(profile.username) < 3:
+            raise HTTPException(status_code=400, detail="Имя пользователя должно быть минимум 3 символа")
+        if len(profile.username) > 30:
+            raise HTTPException(status_code=400, detail="Имя пользователя должно быть максимум 30 символов")
+        if not profile.username.replace("_", "").isalnum():
+            raise HTTPException(status_code=400, detail="Можно использовать только a-z, 0-9 и _")
+        
+        # Check if username is taken
+        existing = await db.users.find_one({"username": profile.username.lower()})
+        if existing and existing["id"] != user_id:
+            raise HTTPException(status_code=400, detail="Это имя пользователя уже занято")
+        
+        update_data["username"] = profile.username.lower()
+    
+    if profile.display_name is not None:
+        update_data["display_name"] = profile.display_name[:50] if profile.display_name else ""
+    
+    if profile.bio is not None:
+        update_data["bio"] = profile.bio[:200] if profile.bio else ""
+    
+    if profile.birthday is not None:
+        update_data["birthday"] = profile.birthday
+    
+    if profile.avatar_url is not None:
+        update_data["avatar_url"] = profile.avatar_url
+    
+    if update_data:
+        update_data["updated_at"] = datetime.utcnow()
+        await db.users.update_one({"id": user_id}, {"$set": update_data})
+        logger.info(f"Profile updated for user {user_id}")
+    
+    # Get updated user
+    updated_user = await db.users.find_one({"id": user_id})
+    return {
+        "id": updated_user["id"],
+        "username": updated_user["username"],
+        "display_name": updated_user.get("display_name", ""),
+        "bio": updated_user.get("bio", ""),
+        "birthday": updated_user.get("birthday", ""),
+        "avatar_url": updated_user.get("avatar_url", "")
+    }
+
+@api_router.get("/users/{user_id}/profile")
+async def get_profile(user_id: str):
+    """Get user profile details"""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "id": user["id"],
+        "username": user["username"],
+        "email": user.get("email", ""),
+        "display_name": user.get("display_name", ""),
+        "bio": user.get("bio", ""),
+        "birthday": user.get("birthday", ""),
+        "avatar_url": user.get("avatar_url", ""),
+        "created_at": user.get("created_at", "")
+    }
+
+@api_router.get("/users/check-username/{username}")
+async def check_username_available(username: str):
+    """Check if username is available"""
+    if len(username) < 3:
+        return {"available": False, "reason": "Минимум 3 символа"}
+    
+    existing = await db.users.find_one({"username": username.lower()})
+    return {"available": existing is None}
+
 # ==================== Message Endpoints ====================
 
 @api_router.post("/messages/send", response_model=MessageResponse)

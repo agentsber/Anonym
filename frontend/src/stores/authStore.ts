@@ -58,6 +58,7 @@ interface AuthState {
   register: (username: string, email: string, password: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  setUser: (user: User) => void;
   clearError: () => void;
 }
 
@@ -225,6 +226,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (error) {
       console.error('Logout error:', error);
     }
+  },
+
+  setUser: (user: User) => {
+    set({ user });
+    AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
   },
 
   clearError: () => set({ error: null }),

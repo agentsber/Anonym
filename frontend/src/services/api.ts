@@ -69,6 +69,27 @@ export const usersApi = {
     const response = await api.get(`/users/${userId}/status`);
     return response.data;
   },
+
+  getProfile: async (userId: string): Promise<any> => {
+    const response = await api.get(`/users/${userId}/profile`);
+    return response.data;
+  },
+
+  updateProfile: async (userId: string, data: {
+    username?: string;
+    display_name?: string;
+    bio?: string;
+    birthday?: string;
+    avatar_url?: string;
+  }): Promise<any> => {
+    const response = await api.put(`/users/${userId}/profile`, data);
+    return response.data;
+  },
+
+  checkUsername: async (username: string): Promise<{ available: boolean }> => {
+    const response = await api.get(`/users/check-username/${username}`);
+    return response.data;
+  },
 };
 
 export const messagesApi = {

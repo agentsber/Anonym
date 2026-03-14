@@ -160,7 +160,10 @@ export default function SettingsScreen() {
         
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.section}>
-            <View style={styles.profileCard}>
+            <TouchableOpacity 
+              style={styles.profileCard}
+              onPress={() => router.push('/profile/edit' as any)}
+            >
               <LinearGradient
                 colors={getAvatarColors()}
                 style={styles.avatar}
@@ -173,7 +176,8 @@ export default function SettingsScreen() {
                 <Text style={styles.username}>@{user?.username}</Text>
                 <Text style={styles.userEmail}>{user?.email}</Text>
               </View>
-            </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.section}>
