@@ -13,11 +13,13 @@ import {
   Modal,
   Image,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { Audio } from 'expo-av';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useChatStore } from '../../src/stores/chatStore';
 import { usersApi, messagesApi } from '../../src/services/api';
@@ -62,6 +64,13 @@ export default function ChatScreen() {
   // Auto-delete timer
   const [autoDeleteSeconds, setAutoDeleteSeconds] = useState<number | null>(null);
   const [showTimerMenu, setShowTimerMenu] = useState(false);
+  
+  // Voice recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   
   const flatListRef = useRef<FlatList>(null);
 
@@ -127,6 +136,138 @@ export default function ChatScreen() {
     if (diffMins < 60) return `${diffMins} мин назад`;
     if (diffMins < 1440) return `${Math.floor(diffMins / 60)} ч назад`;
     return date.toLocaleDateString('ru-RU');
+  };
+
+  // Voice recording functions
+  const startRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Ошибка', 'Нужен доступ к микрофону для записи голосовых сообщений');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      
+      setRecording(recording);
+      setIsRecording(true);
+      setRecordingDuration(0);
+      
+      // Start timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+
+      // Pulse animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.2,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } catch (err) {
+      console.error('Failed to start recording:', err);
+      Alert.alert('Ошибка', 'Не удалось начать запись');
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+    
+    try {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(1);
+      
+      setIsRecording(false);
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setRecording(null);
+      
+      if (uri && recordingDuration >= 1) {
+        await sendVoiceMessage(uri);
+      }
+      
+      setRecordingDuration(0);
+    } catch (err) {
+      console.error('Failed to stop recording:', err);
+    }
+  };
+
+  const cancelRecording = async () => {
+    if (!recording) return;
+    
+    try {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(1);
+      
+      setIsRecording(false);
+      await recording.stopAndUnloadAsync();
+      setRecording(null);
+      setRecordingDuration(0);
+    } catch (err) {
+      console.error('Failed to cancel recording:', err);
+    }
+  };
+
+  const sendVoiceMessage = async (uri: string) => {
+    if (!user || !contact) return;
+    
+    try {
+      // Read file as base64
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const reader = new FileReader();
+      
+      reader.onloadend = async () => {
+        const base64 = (reader.result as string).split(',')[1];
+        
+        await sendMedia(
+          user.id,
+          contact.id,
+          base64,
+          (user as any).exchangeSecretKey,
+          contact.public_key,
+          'audio' as any,
+          `voice_${Date.now()}.m4a`
+        );
+      };
+      
+      reader.readAsDataURL(blob);
+    } catch (err) {
+      console.error('Failed to send voice message:', err);
+      Alert.alert('Ошибка', 'Не удалось отправить голосовое сообщение');
+    }
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleSend = async () => {
@@ -317,7 +458,7 @@ export default function ChatScreen() {
 
   const renderHeaderSubtitle = () => {
     if (contactOnline) {
-      return <Text style={styles.onlineText}>в сети</Text>;
+      return <Text style={styles.onlineText}>онлайн</Text>;
     }
     if (contactLastSeen) {
       return <Text style={styles.lastSeenText}>был(а) {formatLastSeen(contactLastSeen)}</Text>;
@@ -328,7 +469,7 @@ export default function ChatScreen() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
@@ -337,6 +478,8 @@ export default function ChatScreen() {
     <>
       <Stack.Screen
         options={{
+          headerStyle: { backgroundColor: COLORS.background },
+          headerTintColor: COLORS.text,
           headerTitle: () => (
             <View style={styles.headerTitle}>
               <Text style={styles.headerName}>@{contact?.username}</Text>
@@ -351,12 +494,25 @@ export default function ChatScreen() {
                   if (contact) {
                     router.push({
                       pathname: '/video-call',
+                      params: { calleeId: contact.id, calleeName: contact.username, callType: 'audio' }
+                    });
+                  }
+                }}
+              >
+                <Ionicons name="call" size={22} color={COLORS.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.headerButton}
+                onPress={() => {
+                  if (contact) {
+                    router.push({
+                      pathname: '/video-call',
                       params: { calleeId: contact.id, calleeName: contact.username, callType: 'video' }
                     });
                   }
                 }}
               >
-                <Ionicons name="videocam" size={22} color="#007AFF" />
+                <Ionicons name="videocam" size={22} color={COLORS.primary} />
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.headerButton}
@@ -365,12 +521,9 @@ export default function ChatScreen() {
                 <Ionicons 
                   name={autoDeleteSeconds ? "timer" : "timer-outline"} 
                   size={20} 
-                  color={autoDeleteSeconds ? "#FF9500" : "#007AFF"} 
+                  color={autoDeleteSeconds ? "#FF9500" : COLORS.textSecondary} 
                 />
               </TouchableOpacity>
-              <View style={styles.encryptedBadge}>
-                <Ionicons name="shield-checkmark" size={18} color="#34C759" />
-              </View>
             </View>
           ),
         }}
@@ -422,46 +575,68 @@ export default function ChatScreen() {
                 </View>
               </View>
               <TouchableOpacity onPress={cancelReplyOrEdit}>
-                <Ionicons name="close" size={24} color="#8E8E93" />
+                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
               </TouchableOpacity>
             </View>
           )}
           
-          <View style={styles.inputContainer}>
-            <TouchableOpacity
-              style={styles.attachButton}
-              onPress={() => setShowAttachment(true)}
-            >
-              <Ionicons name="add-circle" size={28} color="#007AFF" />
-            </TouchableOpacity>
-            
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="Сообщение"
-                placeholderTextColor="#8E8E93"
-                value={messageText}
-                onChangeText={setMessageText}
-                multiline
-                maxLength={4096}
-              />
-            </View>
-            
-            <TouchableOpacity
-              style={[
-                styles.sendButton,
-                (!messageText.trim() || isSending) && styles.sendButtonDisabled,
-              ]}
-              onPress={handleSend}
-              disabled={!messageText.trim() || isSending}
-            >
-              {isSending ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
+          {/* Recording UI */}
+          {isRecording ? (
+            <View style={styles.recordingContainer}>
+              <TouchableOpacity style={styles.cancelRecordButton} onPress={cancelRecording}>
+                <Ionicons name="close" size={24} color={COLORS.error} />
+              </TouchableOpacity>
+              <View style={styles.recordingInfo}>
+                <Animated.View style={[styles.recordingDot, { transform: [{ scale: pulseAnim }] }]} />
+                <Text style={styles.recordingTime}>{formatDuration(recordingDuration)}</Text>
+              </View>
+              <TouchableOpacity style={styles.sendRecordButton} onPress={stopRecording}>
                 <Ionicons name="send" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.inputContainer}>
+              <TouchableOpacity
+                style={styles.attachButton}
+                onPress={() => setShowAttachment(true)}
+              >
+                <Ionicons name="add-circle" size={28} color={COLORS.primary} />
+              </TouchableOpacity>
+              
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Сообщение"
+                  placeholderTextColor={COLORS.textSecondary}
+                  value={messageText}
+                  onChangeText={setMessageText}
+                  multiline
+                  maxLength={4096}
+                />
+              </View>
+              
+              {messageText.trim() ? (
+                <TouchableOpacity
+                  style={[styles.sendButton, isSending && styles.sendButtonDisabled]}
+                  onPress={handleSend}
+                  disabled={isSending}
+                >
+                  {isSending ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Ionicons name="send" size={20} color="#FFFFFF" />
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.micButton}
+                  onPress={startRecording}
+                >
+                  <Ionicons name="mic" size={24} color={COLORS.primary} />
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
-          </View>
+            </View>
+          )}
         </KeyboardAvoidingView>
         
         {/* Timer Menu */}
@@ -712,6 +887,58 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: COLORS.surfaceLight,
+  },
+  micButton: {
+    marginLeft: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  cancelRecordButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 107, 107, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  recordingDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FF3B30',
+    marginRight: 10,
+  },
+  recordingTime: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  sendRecordButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalOverlay: {
     flex: 1,
