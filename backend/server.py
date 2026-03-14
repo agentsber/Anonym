@@ -88,7 +88,7 @@ def verify_password(password: str, stored_hash: str) -> bool:
     try:
         salt, hashed = stored_hash.split(':')
         return hashlib.sha256((password + salt).encode()).hexdigest() == hashed
-    except:
+    except Exception:
         return False
 
 class UserCreate(BaseModel):
@@ -265,7 +265,7 @@ class ConnectionManager:
             try:
                 await self.active_connections[user_id].send_json(message)
                 return True
-            except:
+            except Exception:
                 return False
         return False
     
@@ -287,7 +287,7 @@ class ConnectionManager:
             if uid != user_id:
                 try:
                     await ws.send_json(status_msg)
-                except:
+                except Exception:
                     pass
 
 manager = ConnectionManager()
@@ -2013,7 +2013,7 @@ async def get_admin_groups(token: str, skip: int = 0, limit: int = 50):
     return {"groups": result, "total": total}
 
 @api_router.delete("/admin/groups/{group_id}")
-async def delete_group(group_id: str, token: str):
+async def admin_delete_group(group_id: str, token: str):
     """Delete a group"""
     if not verify_admin_token(token):
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -2210,7 +2210,7 @@ async def clear_cache(token: str):
                 if f.is_file() and f.stat().st_mtime < cutoff:
                     f.unlink()
                     temp_cleared += 1
-            except:
+            except Exception:
                 pass
         if temp_cleared > 0:
             cleared_items.append(f"{temp_cleared} temp files cleared")
@@ -2311,7 +2311,7 @@ async def get_connections(token: str):
             })
     
     # Get WebSocket connections count
-    ws_count = len(connected_clients) if 'connected_clients' in dir() else 0
+    ws_count = len(manager.active_connections)
     
     return {
         "network_connections": len(connections),

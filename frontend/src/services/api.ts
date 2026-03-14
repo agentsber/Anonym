@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 import { User, Message } from '../types';
 
 // Production backend URL - CHANGE THIS BEFORE BUILDING APK
-const PRODUCTION_BACKEND_URL = 'https://secure-chat-app-92.preview.emergentagent.com';
+const PRODUCTION_BACKEND_URL = 'https://crypto-chat-10.preview.emergentagent.com';
 
 // Get API URL from environment or use production URL
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
