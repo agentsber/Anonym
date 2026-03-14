@@ -2675,6 +2675,249 @@ async def get_active_call(user_id: str):
     
     return {"has_active_call": False}
 
+# ==================== Video Feed (Reels) ====================
+
+class VideoCreate(BaseModel):
+    user_id: str
+    description: str = ""
+    privacy: str = "public"  # public, contacts, private
+    video_data: str  # Base64 encoded video
+
+class VideoComment(BaseModel):
+    user_id: str
+    content: str
+
+@api_router.post("/videos/upload")
+async def upload_video(video: VideoCreate):
+    """Upload a new video to the feed"""
+    # Verify user exists
+    user = await db.users.find_one({"id": video.user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    video_id = str(uuid.uuid4())
+    video_doc = {
+        "id": video_id,
+        "user_id": video.user_id,
+        "username": user["username"],
+        "description": video.description,
+        "privacy": video.privacy,
+        "video_data": video.video_data,
+        "likes": [],
+        "comments": [],
+        "views": 0,
+        "created_at": datetime.utcnow()
+    }
+    
+    await db.videos.insert_one(video_doc)
+    logger.info(f"Video {video_id} uploaded by {user['username']}")
+    
+    return {
+        "id": video_id,
+        "user_id": video.user_id,
+        "username": user["username"],
+        "description": video.description,
+        "privacy": video.privacy,
+        "likes_count": 0,
+        "comments_count": 0,
+        "views": 0,
+        "created_at": video_doc["created_at"].isoformat()
+    }
+
+@api_router.get("/videos/feed/{user_id}")
+async def get_video_feed(user_id: str, skip: int = 0, limit: int = 10):
+    """Get video feed for user based on privacy settings"""
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Get user's contacts
+    contacts = await db.contacts.find({"user_id": user_id}).to_list(1000)
+    contact_ids = [c["contact_id"] for c in contacts]
+    contact_ids.append(user_id)  # Include own videos
+    
+    # Query videos based on privacy
+    query = {
+        "$or": [
+            {"privacy": "public"},
+            {"privacy": "contacts", "user_id": {"$in": contact_ids}},
+            {"user_id": user_id}  # Always show own videos
+        ]
+    }
+    
+    videos = await db.videos.find(query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    
+    result = []
+    for v in videos:
+        result.append({
+            "id": v["id"],
+            "user_id": v["user_id"],
+            "username": v.get("username", "Unknown"),
+            "description": v.get("description", ""),
+            "privacy": v.get("privacy", "public"),
+            "video_url": f"/api/videos/{v['id']}/stream",
+            "likes_count": len(v.get("likes", [])),
+            "comments_count": len(v.get("comments", [])),
+            "views": v.get("views", 0),
+            "is_liked": user_id in v.get("likes", []),
+            "created_at": v["created_at"].isoformat()
+        })
+    
+    return result
+
+@api_router.get("/videos/{video_id}/stream")
+async def stream_video(video_id: str):
+    """Stream video content"""
+    video = await db.videos.find_one({"id": video_id})
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    # Increment view count
+    await db.videos.update_one({"id": video_id}, {"$inc": {"views": 1}})
+    
+    # Decode base64 video data
+    video_data = base64.b64decode(video["video_data"])
+    
+    return Response(
+        content=video_data,
+        media_type="video/mp4",
+        headers={"Content-Disposition": f'inline; filename="video_{video_id}.mp4"'}
+    )
+
+@api_router.get("/videos/{video_id}")
+async def get_video(video_id: str, user_id: str = None):
+    """Get video details"""
+    video = await db.videos.find_one({"id": video_id})
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    return {
+        "id": video["id"],
+        "user_id": video["user_id"],
+        "username": video.get("username", "Unknown"),
+        "description": video.get("description", ""),
+        "privacy": video.get("privacy", "public"),
+        "video_url": f"/api/videos/{video['id']}/stream",
+        "likes_count": len(video.get("likes", [])),
+        "comments_count": len(video.get("comments", [])),
+        "views": video.get("views", 0),
+        "is_liked": user_id in video.get("likes", []) if user_id else False,
+        "created_at": video["created_at"].isoformat()
+    }
+
+@api_router.post("/videos/{video_id}/like")
+async def like_video(video_id: str, user_id: str):
+    """Like or unlike a video"""
+    video = await db.videos.find_one({"id": video_id})
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    likes = video.get("likes", [])
+    
+    if user_id in likes:
+        # Unlike
+        likes.remove(user_id)
+        action = "unliked"
+    else:
+        # Like
+        likes.append(user_id)
+        action = "liked"
+    
+    await db.videos.update_one({"id": video_id}, {"$set": {"likes": likes}})
+    
+    return {"action": action, "likes_count": len(likes)}
+
+@api_router.post("/videos/{video_id}/comment")
+async def add_comment(video_id: str, comment: VideoComment):
+    """Add a comment to a video"""
+    video = await db.videos.find_one({"id": video_id})
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    user = await db.users.find_one({"id": comment.user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    comment_doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": comment.user_id,
+        "username": user["username"],
+        "content": comment.content,
+        "created_at": datetime.utcnow().isoformat()
+    }
+    
+    await db.videos.update_one(
+        {"id": video_id},
+        {"$push": {"comments": comment_doc}}
+    )
+    
+    return comment_doc
+
+@api_router.get("/videos/{video_id}/comments")
+async def get_comments(video_id: str, skip: int = 0, limit: int = 50):
+    """Get comments for a video"""
+    video = await db.videos.find_one({"id": video_id})
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    comments = video.get("comments", [])
+    return comments[skip:skip+limit]
+
+@api_router.delete("/videos/{video_id}")
+async def delete_video(video_id: str, user_id: str):
+    """Delete a video (owner only)"""
+    video = await db.videos.find_one({"id": video_id})
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    if video["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this video")
+    
+    await db.videos.delete_one({"id": video_id})
+    logger.info(f"Video {video_id} deleted by {user_id}")
+    
+    return {"status": "deleted"}
+
+@api_router.get("/videos/user/{target_user_id}")
+async def get_user_videos(target_user_id: str, viewer_id: str = None, skip: int = 0, limit: int = 20):
+    """Get videos from a specific user"""
+    # Get viewer's contacts if viewer_id provided
+    contact_ids = []
+    if viewer_id:
+        contacts = await db.contacts.find({"user_id": viewer_id}).to_list(1000)
+        contact_ids = [c["contact_id"] for c in contacts]
+    
+    # Query based on privacy
+    if viewer_id == target_user_id:
+        # Own profile - show all
+        query = {"user_id": target_user_id}
+    elif target_user_id in contact_ids:
+        # Is a contact - show public and contacts
+        query = {"user_id": target_user_id, "privacy": {"$in": ["public", "contacts"]}}
+    else:
+        # Not a contact - show public only
+        query = {"user_id": target_user_id, "privacy": "public"}
+    
+    videos = await db.videos.find(query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    
+    result = []
+    for v in videos:
+        result.append({
+            "id": v["id"],
+            "user_id": v["user_id"],
+            "username": v.get("username", "Unknown"),
+            "description": v.get("description", ""),
+            "privacy": v.get("privacy", "public"),
+            "video_url": f"/api/videos/{v['id']}/stream",
+            "likes_count": len(v.get("likes", [])),
+            "comments_count": len(v.get("comments", [])),
+            "views": v.get("views", 0),
+            "is_liked": viewer_id in v.get("likes", []) if viewer_id else False,
+            "created_at": v["created_at"].isoformat()
+        })
+    
+    return result
+
 # Include the router in the main app
 app.include_router(api_router)
 

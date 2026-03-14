@@ -390,3 +390,57 @@ export const callsApi = {
     return response.data;
   },
 };
+
+// Video Feed (Reels) API
+export const videosApi = {
+  upload: async (data: {
+    user_id: string;
+    description: string;
+    privacy: 'public' | 'contacts' | 'private';
+    video_data: string;
+  }) => {
+    const response = await api.post('/videos/upload', data);
+    return response.data;
+  },
+
+  getFeed: async (userId: string, skip: number = 0, limit: number = 10) => {
+    const response = await api.get(`/videos/feed/${userId}`, { params: { skip, limit } });
+    return response.data;
+  },
+
+  getVideo: async (videoId: string, userId?: string) => {
+    const response = await api.get(`/videos/${videoId}`, { params: { user_id: userId } });
+    return response.data;
+  },
+
+  getVideoUrl: (videoId: string) => {
+    return `${API_URL}/api/videos/${videoId}/stream`;
+  },
+
+  likeVideo: async (videoId: string, userId: string) => {
+    const response = await api.post(`/videos/${videoId}/like`, null, { params: { user_id: userId } });
+    return response.data;
+  },
+
+  addComment: async (videoId: string, userId: string, content: string) => {
+    const response = await api.post(`/videos/${videoId}/comment`, { user_id: userId, content });
+    return response.data;
+  },
+
+  getComments: async (videoId: string, skip: number = 0, limit: number = 50) => {
+    const response = await api.get(`/videos/${videoId}/comments`, { params: { skip, limit } });
+    return response.data;
+  },
+
+  deleteVideo: async (videoId: string, userId: string) => {
+    const response = await api.delete(`/videos/${videoId}`, { params: { user_id: userId } });
+    return response.data;
+  },
+
+  getUserVideos: async (targetUserId: string, viewerId?: string, skip: number = 0, limit: number = 20) => {
+    const response = await api.get(`/videos/user/${targetUserId}`, { 
+      params: { viewer_id: viewerId, skip, limit } 
+    });
+    return response.data;
+  },
+};

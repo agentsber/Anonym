@@ -49,6 +49,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="reels"
+        options={{
+          title: 'Лента',
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="play-circle" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Настройки',
