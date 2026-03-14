@@ -398,6 +398,7 @@ export const videosApi = {
     description: string;
     privacy: 'public' | 'contacts' | 'private';
     video_data: string;
+    editor_metadata?: string | null;
   }) => {
     const response = await api.post('/videos/upload', data);
     return response.data;

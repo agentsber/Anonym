@@ -2682,6 +2682,7 @@ class VideoCreate(BaseModel):
     description: str = ""
     privacy: str = "public"  # public, contacts, private
     video_data: str  # Base64 encoded video
+    editor_metadata: Optional[str] = None  # JSON string with editor effects
 
 class VideoComment(BaseModel):
     user_id: str
@@ -2703,6 +2704,7 @@ async def upload_video(video: VideoCreate):
         "description": video.description,
         "privacy": video.privacy,
         "video_data": video.video_data,
+        "editor_metadata": video.editor_metadata,
         "likes": [],
         "comments": [],
         "views": 0,
