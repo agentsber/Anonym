@@ -650,14 +650,14 @@ export default function ChatScreen() {
                 style={styles.attachButton}
                 onPress={() => setShowAttachment(true)}
               >
-                <Ionicons name="add-circle" size={28} color={COLORS.primary} />
+                <Ionicons name="add" size={26} color="#7C3AED" />
               </TouchableOpacity>
               
               <View style={styles.inputWrapper}>
                 <TextInput
                   style={styles.input}
-                  placeholder="Сообщение"
-                  placeholderTextColor={COLORS.textSecondary}
+                  placeholder="Сообщение..."
+                  placeholderTextColor="rgba(255,255,255,0.35)"
                   value={messageText}
                   onChangeText={setMessageText}
                   multiline
@@ -674,7 +674,7 @@ export default function ChatScreen() {
                   {isSending ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Ionicons name="send" size={20} color="#FFFFFF" />
+                    <Ionicons name="arrow-up" size={22} color="#FFFFFF" />
                   )}
                 </TouchableOpacity>
               ) : (
@@ -682,7 +682,7 @@ export default function ChatScreen() {
                   style={styles.micButton}
                   onPress={startRecording}
                 >
-                  <Ionicons name="mic" size={24} color={COLORS.primary} />
+                  <Ionicons name="mic" size={24} color="#7C3AED" />
                 </TouchableOpacity>
               )}
             </View>
@@ -907,46 +907,62 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingBottom: 14,
+    backgroundColor: 'rgba(18, 18, 22, 0.98)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   attachButton: {
-    marginRight: 8,
-    marginBottom: 6,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(124, 58, 237, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
   },
   inputWrapper: {
     flex: 1,
-    backgroundColor: COLORS.surfaceLight,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
     maxHeight: 120,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   input: {
     fontSize: 16,
     color: COLORS.text,
     maxHeight: 100,
+    lineHeight: 22,
   },
   sendButton: {
-    marginLeft: 8,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.primary,
+    marginLeft: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#7C3AED',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
   },
   sendButtonDisabled: {
-    backgroundColor: COLORS.surfaceLight,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    shadowOpacity: 0,
   },
   micButton: {
-    marginLeft: 8,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.surfaceLight,
+    marginLeft: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(124, 58, 237, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -954,15 +970,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(18, 18, 22, 0.98)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   cancelRecordButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255, 107, 107, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
