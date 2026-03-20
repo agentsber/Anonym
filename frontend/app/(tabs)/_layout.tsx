@@ -1,13 +1,15 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet } from 'react-native';
+import { BlurView } from 'expo-blur';
 
 const COLORS = {
-  background: '#0A0A0A',
-  surface: '#1A1A1A',
+  background: '#000000',
+  surface: 'rgba(20, 20, 20, 0.9)',
   primary: '#6C5CE7',
-  textSecondary: '#8E8E93',
-  border: '#333333',
+  textSecondary: 'rgba(255, 255, 255, 0.4)',
+  border: 'rgba(255, 255, 255, 0.08)',
 };
 
 export default function TabLayout() {
@@ -25,8 +27,12 @@ export default function TabLayout() {
           paddingBottom: 25,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '500',
+          marginTop: 4,
+        },
+        tabBarIconStyle: {
+          marginTop: 4,
         },
         headerStyle: {
           backgroundColor: COLORS.background,
@@ -43,8 +49,10 @@ export default function TabLayout() {
         options={{
           title: 'Чаты',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <View style={focused ? styles.activeIcon : undefined}>
+              <Ionicons name={focused ? "chatbubbles" : "chatbubbles-outline"} size={24} color={color} />
+            </View>
           ),
         }}
       />
@@ -53,8 +61,10 @@ export default function TabLayout() {
         options={{
           title: 'Лента',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="play-circle" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <View style={focused ? styles.activeIcon : undefined}>
+              <Ionicons name={focused ? "play-circle" : "play-circle-outline"} size={24} color={color} />
+            </View>
           ),
         }}
       />
@@ -63,11 +73,22 @@ export default function TabLayout() {
         options={{
           title: 'Настройки',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings" size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <View style={focused ? styles.activeIcon : undefined}>
+              <Ionicons name={focused ? "settings" : "settings-outline"} size={24} color={color} />
+            </View>
           ),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  activeIcon: {
+    backgroundColor: 'rgba(108, 92, 231, 0.15)',
+    borderRadius: 12,
+    padding: 6,
+    marginTop: -6,
+  },
+});

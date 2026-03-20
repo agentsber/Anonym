@@ -12,6 +12,7 @@ import {
   Alert,
   Animated,
   Easing,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -19,18 +20,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../src/stores/authStore';
 
+const { width } = Dimensions.get('window');
+
 const COLORS = {
-  background: '#0A0A0A',
-  surface: '#1A1A1A',
-  surfaceLight: '#252525',
+  background: '#000000',
+  surface: 'rgba(255, 255, 255, 0.05)',
+  surfaceLight: 'rgba(255, 255, 255, 0.08)',
   primary: '#6C5CE7',
   primaryLight: '#A29BFE',
+  primaryDark: '#5B4AD1',
   success: '#00D9A5',
   error: '#FF6B6B',
   text: '#FFFFFF',
-  textSecondary: '#8E8E93',
-  textMuted: '#555555',
-  border: '#333333',
+  textSecondary: 'rgba(255, 255, 255, 0.6)',
+  border: 'rgba(255, 255, 255, 0.1)',
+  inputBg: 'rgba(255, 255, 255, 0.05)',
 };
 
 export default function RegisterScreen() {
@@ -43,383 +47,257 @@ export default function RegisterScreen() {
   
   const { register, login, isLoading, error, clearError } = useAuthStore();
 
-  // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
-  const logoScale = useRef(new Animated.Value(0.5)).current;
-  const buttonScale = useRef(new Animated.Value(1)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Initial animations
     Animated.parallel([
-      Animated.spring(logoScale, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 500,
+        duration: 400,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 500,
+        duration: 400,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start();
   }, []);
 
-  // Shake animation for errors
   const triggerShake = () => {
     Animated.sequence([
       Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
       Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 6, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -6, duration: 50, useNativeDriver: true }),
       Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
     ]).start();
   };
 
-  const handleButtonPressIn = () => {
-    Animated.spring(buttonScale, {
-      toValue: 0.95,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handleButtonPressOut = () => {
-    Animated.spring(buttonScale, {
-      toValue: 1,
-      friction: 3,
-      tension: 40,
-      useNativeDriver: true,
-    }).start();
-  };
+  useEffect(() => {
+    if (error) {
+      triggerShake();
+      Alert.alert('Ошибка', error);
+      clearError();
+    }
+  }, [error]);
 
   const validateEmail = (email: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   };
 
-  // Generate username from email
-  const generateUsername = (email: string) => {
-    const localPart = email.split('@')[0];
-    return localPart.toLowerCase().replace(/[^a-z0-9]/g, '') + Math.floor(Math.random() * 1000);
-  };
-
   const handleRegister = async () => {
-    clearError();
-    if (!email || !password || !confirmPassword) {
-      triggerShake();
+    if (!email.trim() || !password.trim()) {
       Alert.alert('Ошибка', 'Заполните все поля');
+      triggerShake();
       return;
     }
+
     if (!validateEmail(email)) {
-      triggerShake();
       Alert.alert('Ошибка', 'Введите корректный email');
-      return;
-    }
-    if (password !== confirmPassword) {
       triggerShake();
-      Alert.alert('Ошибка', 'Пароли не совпадают');
       return;
     }
+
     if (password.length < 6) {
-      triggerShake();
       Alert.alert('Ошибка', 'Пароль должен быть минимум 6 символов');
+      triggerShake();
       return;
     }
-    
-    try {
-      const username = generateUsername(email);
-      await register(username, email, password);
-      // Only navigate if registration was successful
-      const currentUser = useAuthStore.getState().user;
-      if (currentUser) {
-        setTimeout(() => {
-          router.replace('/(tabs)');
-        }, 100);
-      }
-    } catch (err: any) {
-      console.error('Registration failed:', err);
+
+    if (password !== confirmPassword) {
+      Alert.alert('Ошибка', 'Пароли не совпадают');
       triggerShake();
-      const errorMsg = err.response?.data?.detail || err.message || 'Ошибка регистрации. Проверьте подключение к сети.';
-      Alert.alert('Ошибка регистрации', errorMsg);
+      return;
+    }
+
+    try {
+      const username = email.split('@')[0]; // Generate username from email
+      await register(username, email, password);
+      router.replace('/(tabs)');
+    } catch (e: any) {
+      Alert.alert('Ошибка', e.message || 'Не удалось создать аккаунт');
     }
   };
 
   const handleLogin = async () => {
-    clearError();
-    if (!email || !password) {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Ошибка', 'Заполните все поля');
       triggerShake();
-      Alert.alert('Ошибка', 'Введите email и пароль');
       return;
     }
-    
+
     try {
       await login(email, password);
-      // Only navigate if login was successful
-      const currentUser = useAuthStore.getState().user;
-      if (currentUser) {
-        setTimeout(() => {
-          router.replace('/(tabs)');
-        }, 100);
-      }
-    } catch (err: any) {
-      console.error('Login failed:', err);
-      triggerShake();
-      const errorMsg = err.response?.data?.detail || err.message || 'Ошибка входа. Проверьте подключение к сети.';
-      Alert.alert('Ошибка входа', errorMsg);
+      router.replace('/(tabs)');
+    } catch (e: any) {
+      Alert.alert('Ошибка', e.message || 'Не удалось войти');
     }
   };
 
-  const canRegister = 
-    validateEmail(email) &&
-    password.length >= 6 && 
-    password === confirmPassword &&
-    !isLoading;
+  const switchMode = () => {
+    clearError();
+    setStep(step === 'login' ? 'register' : 'login');
+    setPassword('');
+    setConfirmPassword('');
+  };
 
-  const canLogin = validateEmail(email) && password.length >= 6 && !isLoading;
+  return (
+    <View style={styles.container}>
+      {/* Background orbs */}
+      <View style={styles.backgroundOrbs}>
+        <LinearGradient
+          colors={[COLORS.primary, 'transparent']}
+          style={[styles.orb, styles.orb1]}
+        />
+        <LinearGradient
+          colors={[COLORS.primaryLight, 'transparent']}
+          style={[styles.orb, styles.orb2]}
+        />
+      </View>
 
-  if (step === 'login') {
-    return (
-      <View style={styles.container}>
-        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-          <KeyboardAvoidingView
-            style={styles.keyboardView}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-              <View style={styles.content}>
-                <View style={styles.logoContainer}>
+            {/* Back button */}
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+
+            <Animated.View style={[
+              styles.content,
+              {
+                opacity: fadeAnim,
+                transform: [
+                  { translateY: slideAnim },
+                  { translateX: shakeAnim },
+                ],
+              },
+            ]}>
+              {/* Header */}
+              <View style={styles.header}>
+                <View style={styles.logoWrapper}>
                   <LinearGradient
-                    colors={[COLORS.primary, COLORS.primaryLight]}
-                    style={styles.logoGradient}
+                    colors={[COLORS.primary, COLORS.primaryDark]}
+                    style={styles.logo}
                   >
-                    <Ionicons name="chatbubbles" size={40} color="#FFF" />
+                    <Ionicons name="shield-checkmark" size={32} color="#FFFFFF" />
                   </LinearGradient>
                 </View>
-                
-                <Text style={styles.title}>С возвращением</Text>
-                <Text style={styles.description}>
-                  Войдите в свой аккаунт
+                <Text style={styles.title}>
+                  {step === 'login' ? 'Вход' : 'Регистрация'}
                 </Text>
-                
-                <View style={styles.inputContainer}>
-                  <Ionicons name="mail-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+                <Text style={styles.subtitle}>
+                  {step === 'login' 
+                    ? 'Войдите в аккаунт' 
+                    : 'Создайте аккаунт'}
+                </Text>
+              </View>
+
+              {/* Form */}
+              <View style={styles.form}>
+                <View style={styles.inputWrapper}>
+                  <View style={styles.inputIcon}>
+                    <Ionicons name="mail-outline" size={20} color={COLORS.textSecondary} />
+                  </View>
                   <TextInput
                     style={styles.input}
                     placeholder="Email"
-                    placeholderTextColor={COLORS.textMuted}
+                    placeholderTextColor={COLORS.textSecondary}
                     value={email}
                     onChangeText={setEmail}
+                    keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
-                    keyboardType="email-address"
                   />
                 </View>
-                
-                <View style={styles.inputContainer}>
-                  <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
+
+                <View style={styles.inputWrapper}>
+                  <View style={styles.inputIcon}>
+                    <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} />
+                  </View>
                   <TextInput
                     style={styles.input}
                     placeholder="Пароль"
-                    placeholderTextColor={COLORS.textMuted}
+                    placeholderTextColor={COLORS.textSecondary}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
                   />
-                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
-                    <Ionicons 
-                      name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                      size={20} 
-                      color={COLORS.textSecondary} 
+                  <TouchableOpacity
+                    style={styles.showPasswordButton}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={COLORS.textSecondary}
                     />
                   </TouchableOpacity>
                 </View>
-                
-                {error && (
-                  <View style={styles.errorContainer}>
-                    <Ionicons name="alert-circle" size={16} color={COLORS.error} />
-                    <Text style={styles.error}>{error}</Text>
+
+                {step === 'register' && (
+                  <View style={styles.inputWrapper}>
+                    <View style={styles.inputIcon}>
+                      <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} />
+                    </View>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Повторите пароль"
+                      placeholderTextColor={COLORS.textSecondary}
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      secureTextEntry={!showPassword}
+                    />
                   </View>
                 )}
-              </View>
-            </ScrollView>
-            
-            <View style={styles.footer}>
-              <TouchableOpacity
-                style={[styles.button, !canLogin && styles.buttonDisabled]}
-                onPress={handleLogin}
-                disabled={!canLogin}
-              >
-                <LinearGradient
-                  colors={canLogin ? [COLORS.primary, COLORS.primaryLight] : [COLORS.surfaceLight, COLORS.surfaceLight]}
-                  style={styles.buttonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.buttonText}>Войти</Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-              
-              <TouchableOpacity onPress={() => { setStep('register'); clearError(); }}>
-                <Text style={styles.switchText}>
-                  Нет аккаунта? <Text style={styles.switchTextHighlight}>Регистрация</Text>
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </View>
-    );
-  }
 
-  return (
-    <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <KeyboardAvoidingView
-          style={styles.keyboardView}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-            <View style={styles.content}>
-              <View style={styles.logoContainer}>
-                <LinearGradient
-                  colors={[COLORS.primary, COLORS.primaryLight]}
-                  style={styles.logoGradient}
+                <TouchableOpacity
+                  style={styles.submitButton}
+                  onPress={step === 'login' ? handleLogin : handleRegister}
+                  disabled={isLoading}
+                  activeOpacity={0.8}
                 >
-                  <Ionicons name="shield-checkmark" size={40} color="#FFF" />
-                </LinearGradient>
-              </View>
-              
-              <Text style={styles.title}>Private</Text>
-              <Text style={styles.description}>
-                Безопасный мессенджер с{'\n'}E2E шифрованием
-              </Text>
-              
-              {/* Email */}
-              <View style={styles.inputContainer}>
-                <Ionicons name="mail-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email"
-                  placeholderTextColor={COLORS.textMuted}
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="email-address"
-                />
-                {email.length > 0 && (
-                  <Ionicons 
-                    name={validateEmail(email) ? "checkmark-circle" : "close-circle"} 
-                    size={22} 
-                    color={validateEmail(email) ? COLORS.success : COLORS.error} 
-                  />
-                )}
-              </View>
-              
-              {/* Password */}
-              <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Пароль (мин. 6 символов)"
-                  placeholderTextColor={COLORS.textMuted}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
-                  <Ionicons 
-                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                    size={20} 
-                    color={COLORS.textSecondary} 
-                  />
+                  <LinearGradient
+                    colors={[COLORS.primary, COLORS.primaryDark]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.submitButtonGradient}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.submitButtonText}>
+                        {step === 'login' ? 'Войти' : 'Создать аккаунт'}
+                      </Text>
+                    )}
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
-              
-              {/* Confirm Password */}
-              <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color={COLORS.textSecondary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Подтвердите пароль"
-                  placeholderTextColor={COLORS.textMuted}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showPassword}
-                />
-                {confirmPassword.length > 0 && (
-                  <Ionicons 
-                    name={password === confirmPassword ? "checkmark-circle" : "close-circle"} 
-                    size={22} 
-                    color={password === confirmPassword ? COLORS.success : COLORS.error} 
-                  />
-                )}
+
+              {/* Switch mode */}
+              <View style={styles.switchContainer}>
+                <Text style={styles.switchText}>
+                  {step === 'login' ? 'Нет аккаунта?' : 'Уже есть аккаунт?'}
+                </Text>
+                <TouchableOpacity onPress={switchMode}>
+                  <Text style={styles.switchLink}>
+                    {step === 'login' ? 'Создать' : 'Войти'}
+                  </Text>
+                </TouchableOpacity>
               </View>
-              
-              {confirmPassword.length > 0 && password !== confirmPassword && (
-                <Text style={styles.errorHint}>Пароли не совпадают</Text>
-              )}
-              
-              {error && (
-                <View style={styles.errorContainer}>
-                  <Ionicons name="alert-circle" size={16} color={COLORS.error} />
-                  <Text style={styles.error}>{error}</Text>
-                </View>
-              )}
-              
-              <View style={styles.featureList}>
-                <View style={styles.featureItem}>
-                  <Ionicons name="shield" size={18} color={COLORS.primary} />
-                  <Text style={styles.featureText}>E2E шифрование</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Ionicons name="eye-off" size={18} color={COLORS.primary} />
-                  <Text style={styles.featureText}>Приватность</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Ionicons name="key" size={18} color={COLORS.primary} />
-                  <Text style={styles.featureText}>Локальные ключи</Text>
-                </View>
-              </View>
-            </View>
+            </Animated.View>
           </ScrollView>
-          
-          <View style={styles.footer}>
-            <TouchableOpacity
-              style={[styles.button, !canRegister && styles.buttonDisabled]}
-              onPress={handleRegister}
-              disabled={!canRegister}
-            >
-              <LinearGradient
-                colors={canRegister ? [COLORS.primary, COLORS.primaryLight] : [COLORS.surfaceLight, COLORS.surfaceLight]}
-                style={styles.buttonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.buttonText}>Создать аккаунт</Text>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-            
-            <TouchableOpacity onPress={() => { setStep('login'); clearError(); }}>
-              <Text style={styles.switchText}>
-                Уже есть аккаунт? <Text style={styles.switchTextHighlight}>Войти</Text>
-              </Text>
-            </TouchableOpacity>
-          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
@@ -431,6 +309,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  backgroundOrbs: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  orb: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.25,
+  },
+  orb1: {
+    width: 300,
+    height: 300,
+    top: -50,
+    right: -80,
+  },
+  orb2: {
+    width: 200,
+    height: 200,
+    bottom: 150,
+    left: -60,
+  },
   safeArea: {
     flex: 1,
   },
@@ -439,20 +338,38 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingHorizontal: 24,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 20,
+    justifyContent: 'center',
+    paddingVertical: 40,
   },
-  logoContainer: {
+  header: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 40,
   },
-  logoGradient: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
+  logoWrapper: {
+    marginBottom: 20,
+    padding: 3,
+    borderRadius: 20,
+    backgroundColor: 'rgba(108, 92, 231, 0.2)',
+  },
+  logo: {
+    width: 64,
+    height: 64,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -460,113 +377,73 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '700',
     color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: 8,
+    letterSpacing: -0.5,
   },
-  description: {
-    fontSize: 16,
+  subtitle: {
+    fontSize: 15,
     color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 24,
+    marginTop: 8,
   },
-  inputContainer: {
+  form: {
+    gap: 16,
+  },
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.inputBg,
     borderRadius: 16,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    height: 56,
     borderWidth: 1,
     borderColor: COLORS.border,
+    overflow: 'hidden',
   },
   inputIcon: {
-    marginRight: 12,
+    width: 48,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   input: {
     flex: 1,
+    height: 56,
     fontSize: 16,
     color: COLORS.text,
+    paddingRight: 16,
   },
-  statusIcon: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  eyeButton: {
-    padding: 4,
-  },
-  hint: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginTop: -8,
-    marginBottom: 12,
-    marginLeft: 16,
-  },
-  errorHint: {
-    fontSize: 13,
-    color: COLORS.error,
-    marginTop: -8,
-    marginBottom: 12,
-    marginLeft: 16,
-  },
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 12,
-    gap: 8,
-  },
-  error: {
-    fontSize: 14,
-    color: COLORS.error,
-  },
-  featureList: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 24,
-    paddingHorizontal: 8,
-  },
-  featureItem: {
-    alignItems: 'center',
-    gap: 6,
-  },
-  featureText: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-  footer: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 50,
-  },
-  button: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 16,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonGradient: {
+  showPasswordButton: {
+    width: 48,
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  buttonText: {
-    color: '#FFFFFF',
+  submitButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  submitButtonGradient: {
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  submitButtonText: {
     fontSize: 17,
     fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 32,
+    gap: 6,
   },
   switchText: {
+    fontSize: 14,
     color: COLORS.textSecondary,
-    fontSize: 15,
-    textAlign: 'center',
   },
-  switchTextHighlight: {
-    color: COLORS.primary,
+  switchLink: {
+    fontSize: 14,
     fontWeight: '600',
+    color: COLORS.primary,
   },
 });

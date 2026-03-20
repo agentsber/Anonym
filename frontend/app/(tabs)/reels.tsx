@@ -25,12 +25,12 @@ const VIDEO_HEIGHT = screenHeight - 170; // Account for tab bar and status bar
 
 const COLORS = {
   background: '#000000',
-  surface: '#1A1A1A',
+  surface: 'rgba(255, 255, 255, 0.05)',
   primary: '#6C5CE7',
   success: '#00D9A5',
   error: '#FF6B6B',
   text: '#FFFFFF',
-  textSecondary: '#8E8E93',
+  textSecondary: 'rgba(255, 255, 255, 0.6)',
 };
 
 interface VideoItem {

@@ -1,89 +1,56 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing, Dimensions } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useAuthStore } from '../src/stores/authStore';
 
+const { width } = Dimensions.get('window');
+
 const COLORS = {
-  background: '#0A0A0A',
-  surface: '#1A1A1A',
+  background: '#000000',
+  surface: 'rgba(255, 255, 255, 0.05)',
+  surfaceLight: 'rgba(255, 255, 255, 0.08)',
   primary: '#6C5CE7',
   primaryLight: '#A29BFE',
+  primaryDark: '#5B4AD1',
   text: '#FFFFFF',
-  textSecondary: '#8E8E93',
-  border: '#333333',
+  textSecondary: 'rgba(255, 255, 255, 0.6)',
+  border: 'rgba(255, 255, 255, 0.1)',
 };
 
 export default function WelcomeScreen() {
   const { user, isInitialized } = useAuthStore();
   
-  // Animation values
   const logoScale = useRef(new Animated.Value(0)).current;
-  const logoRotate = useRef(new Animated.Value(0)).current;
-  const titleOpacity = useRef(new Animated.Value(0)).current;
-  const titleTranslateY = useRef(new Animated.Value(30)).current;
-  const subtitleOpacity = useRef(new Animated.Value(0)).current;
-  const featuresOpacity = useRef(new Animated.Value(0)).current;
-  const featuresTranslateY = useRef(new Animated.Value(40)).current;
+  const contentOpacity = useRef(new Animated.Value(0)).current;
+  const contentTranslateY = useRef(new Animated.Value(40)).current;
   const buttonsOpacity = useRef(new Animated.Value(0)).current;
-  const buttonsTranslateY = useRef(new Animated.Value(50)).current;
-  const buttonScale = useRef(new Animated.Value(1)).current;
+  const buttonsTranslateY = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
-    // Sequential animation on mount
     Animated.sequence([
-      // Logo bounce in with rotation
-      Animated.parallel([
-        Animated.spring(logoScale, {
-          toValue: 1,
-          tension: 50,
-          friction: 7,
-          useNativeDriver: true,
-        }),
-        Animated.timing(logoRotate, {
-          toValue: 1,
-          duration: 800,
-          easing: Easing.out(Easing.back(1.5)),
-          useNativeDriver: true,
-        }),
-      ]),
-      // Title fade in
-      Animated.parallel([
-        Animated.timing(titleOpacity, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(titleTranslateY, {
-          toValue: 0,
-          duration: 400,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]),
-      // Subtitle fade in
-      Animated.timing(subtitleOpacity, {
+      Animated.spring(logoScale, {
         toValue: 1,
-        duration: 300,
+        tension: 60,
+        friction: 8,
         useNativeDriver: true,
       }),
-      // Features slide in
       Animated.parallel([
-        Animated.timing(featuresOpacity, {
+        Animated.timing(contentOpacity, {
           toValue: 1,
-          duration: 400,
+          duration: 500,
           useNativeDriver: true,
         }),
-        Animated.timing(featuresTranslateY, {
+        Animated.timing(contentTranslateY, {
           toValue: 0,
-          duration: 400,
+          duration: 500,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
       ]),
-      // Buttons slide in
       Animated.parallel([
         Animated.timing(buttonsOpacity, {
           toValue: 1,
@@ -100,102 +67,89 @@ export default function WelcomeScreen() {
     ]).start();
   }, []);
 
-  const handleButtonPressIn = () => {
-    Animated.spring(buttonScale, {
-      toValue: 0.95,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handleButtonPressOut = () => {
-    Animated.spring(buttonScale, {
-      toValue: 1,
-      friction: 3,
-      tension: 40,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  React.useEffect(() => {
-    // Wait for auth to initialize, then redirect if user exists
+  useEffect(() => {
     if (isInitialized && user) {
-      console.log('User found, redirecting to tabs...', user.username);
       setTimeout(() => {
         router.replace('/(tabs)');
       }, 100);
     }
   }, [user, isInitialized]);
 
-  const spin = logoRotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-
   return (
     <View style={styles.container}>
+      {/* Background gradient orbs */}
+      <View style={styles.backgroundOrbs}>
+        <LinearGradient
+          colors={[COLORS.primary, 'transparent']}
+          style={[styles.orb, styles.orb1]}
+        />
+        <LinearGradient
+          colors={[COLORS.primaryLight, 'transparent']}
+          style={[styles.orb, styles.orb2]}
+        />
+      </View>
+
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
-          <Animated.View style={[
-            styles.logoContainer,
-            {
-              transform: [
-                { scale: logoScale },
-                { rotate: spin },
-              ],
-            },
-          ]}>
-            <LinearGradient
-              colors={[COLORS.primary, COLORS.primaryLight]}
-              style={styles.logo}
-            >
-              <Ionicons name="shield-checkmark" size={64} color="#FFFFFF" />
-            </LinearGradient>
+          {/* Logo */}
+          <Animated.View style={[styles.logoWrapper, { transform: [{ scale: logoScale }] }]}>
+            <View style={styles.logoOuter}>
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryDark]}
+                style={styles.logo}
+              >
+                <Ionicons name="shield-checkmark" size={48} color="#FFFFFF" />
+              </LinearGradient>
+            </View>
           </Animated.View>
           
-          <Animated.Text style={[
-            styles.title,
+          {/* Title & Subtitle */}
+          <Animated.View style={[
+            styles.textContainer,
             {
-              opacity: titleOpacity,
-              transform: [{ translateY: titleTranslateY }],
+              opacity: contentOpacity,
+              transform: [{ translateY: contentTranslateY }],
             },
           ]}>
-            Private
-          </Animated.Text>
-          <Animated.Text style={[
-            styles.subtitle,
-            { opacity: subtitleOpacity },
-          ]}>
-            Безопасный мессенджер{'\n'}со сквозным шифрованием
-          </Animated.Text>
+            <Text style={styles.title}>Private</Text>
+            <Text style={styles.subtitle}>Безопасный мессенджер</Text>
+          </Animated.View>
           
+          {/* Features - Glass cards */}
           <Animated.View style={[
             styles.features,
             {
-              opacity: featuresOpacity,
-              transform: [{ translateY: featuresTranslateY }],
+              opacity: contentOpacity,
+              transform: [{ translateY: contentTranslateY }],
             },
           ]}>
-            <View style={styles.featureItem}>
-              <View style={styles.featureIcon}>
-                <Ionicons name="lock-closed" size={22} color={COLORS.primary} />
+            <View style={styles.featureCard}>
+              <View style={styles.featureIconWrapper}>
+                <Ionicons name="lock-closed" size={20} color={COLORS.primary} />
               </View>
-              <Text style={styles.featureText}>E2E{'\n'}шифрование</Text>
+              <Text style={styles.featureTitle}>E2E шифрование</Text>
+              <Text style={styles.featureDesc}>Только вы читаете</Text>
             </View>
-            <View style={styles.featureItem}>
-              <View style={styles.featureIcon}>
-                <Ionicons name="eye-off" size={22} color={COLORS.primary} />
+            
+            <View style={styles.featureCard}>
+              <View style={styles.featureIconWrapper}>
+                <Ionicons name="eye-off" size={20} color={COLORS.primary} />
               </View>
-              <Text style={styles.featureText}>Полная{'\n'}приватность</Text>
+              <Text style={styles.featureTitle}>Приватность</Text>
+              <Text style={styles.featureDesc}>Нет слежки</Text>
             </View>
-            <View style={styles.featureItem}>
-              <View style={styles.featureIcon}>
-                <Ionicons name="key" size={22} color={COLORS.primary} />
+            
+            <View style={styles.featureCard}>
+              <View style={styles.featureIconWrapper}>
+                <Ionicons name="flash" size={20} color={COLORS.primary} />
               </View>
-              <Text style={styles.featureText}>Локальные{'\n'}ключи</Text>
+              <Text style={styles.featureTitle}>Быстро</Text>
+              <Text style={styles.featureDesc}>Мгновенно</Text>
             </View>
           </Animated.View>
         </View>
         
+        {/* Buttons */}
         <Animated.View style={[
           styles.buttons,
           {
@@ -203,31 +157,25 @@ export default function WelcomeScreen() {
             transform: [{ translateY: buttonsTranslateY }],
           },
         ]}>
-          <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => router.push('/auth/register')}
-              onPressIn={handleButtonPressIn}
-              onPressOut={handleButtonPressOut}
-              activeOpacity={1}
-            >
-              <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryLight]}
-                style={styles.buttonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text style={styles.primaryButtonText}>Начать</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
-          
           <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => router.push('/auth/register?mode=login')}
+            style={styles.primaryButton}
+            onPress={() => router.push('/auth/register')}
+            activeOpacity={0.8}
           >
-            <Text style={styles.secondaryButtonText}>У меня уже есть аккаунт</Text>
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.primaryDark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.primaryButtonGradient}
+            >
+              <Text style={styles.primaryButtonText}>Начать</Text>
+              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+            </LinearGradient>
           </TouchableOpacity>
+          
+          <Text style={styles.termsText}>
+            Продолжая, вы принимаете условия использования
+          </Text>
         </Animated.View>
       </SafeAreaView>
     </View>
@@ -239,89 +187,125 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  backgroundOrbs: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  orb: {
+    position: 'absolute',
+    borderRadius: 999,
+    opacity: 0.3,
+  },
+  orb1: {
+    width: 300,
+    height: 300,
+    top: -100,
+    right: -100,
+  },
+  orb2: {
+    width: 250,
+    height: 250,
+    bottom: 100,
+    left: -80,
+  },
   safeArea: {
     flex: 1,
+    justifyContent: 'space-between',
   },
   content: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
   },
-  logoContainer: {
+  logoWrapper: {
     marginBottom: 32,
   },
-  logo: {
-    width: 120,
-    height: 120,
+  logoOuter: {
+    padding: 4,
     borderRadius: 32,
-    alignItems: 'center',
+    backgroundColor: 'rgba(108, 92, 231, 0.2)',
+  },
+  logo: {
+    width: 96,
+    height: 96,
+    borderRadius: 28,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  textContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
   },
   title: {
-    fontSize: 40,
+    fontSize: 42,
     fontWeight: '700',
     color: COLORS.text,
-    marginBottom: 12,
+    letterSpacing: -1,
   },
   subtitle: {
-    fontSize: 17,
+    fontSize: 16,
     color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 26,
-    marginBottom: 48,
+    marginTop: 8,
   },
   features: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
+    gap: 12,
   },
-  featureItem: {
-    alignItems: 'center',
-  },
-  featureIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+  featureCard: {
+    flex: 1,
     backgroundColor: COLORS.surface,
+    borderRadius: 20,
+    padding: 16,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  featureText: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    fontWeight: '500',
+  featureIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(108, 92, 231, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  featureTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.text,
     textAlign: 'center',
-    lineHeight: 16,
+  },
+  featureDesc: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+    textAlign: 'center',
   },
   buttons: {
     paddingHorizontal: 24,
-    paddingBottom: 60,
+    paddingBottom: 20,
   },
   primaryButton: {
     borderRadius: 16,
     overflow: 'hidden',
-    marginBottom: 16,
   },
-  buttonGradient: {
-    paddingVertical: 18,
+  primaryButtonGradient: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    gap: 8,
   },
   primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
-  secondaryButton: {
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    color: COLORS.primary,
-    fontSize: 16,
-    fontWeight: '500',
+  termsText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: 16,
   },
 });

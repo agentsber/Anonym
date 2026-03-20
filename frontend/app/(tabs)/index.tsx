@@ -19,14 +19,14 @@ import { ContactItem } from '../../src/components/ContactItem';
 import { User, Group } from '../../src/types';
 
 const COLORS = {
-  background: '#0A0A0A',
-  surface: '#1A1A1A',
-  surfaceLight: '#252525',
+  background: '#000000',
+  surface: 'rgba(255, 255, 255, 0.05)',
+  surfaceLight: 'rgba(255, 255, 255, 0.08)',
   primary: '#6C5CE7',
   primaryLight: '#A29BFE',
   text: '#FFFFFF',
-  textSecondary: '#8E8E93',
-  border: '#333333',
+  textSecondary: 'rgba(255, 255, 255, 0.6)',
+  border: 'rgba(255, 255, 255, 0.08)',
 };
 
 export default function ChatsScreen() {
