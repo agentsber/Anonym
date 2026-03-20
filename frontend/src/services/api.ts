@@ -189,6 +189,11 @@ export const contactsApi = {
     const response = await api.get(`/contacts/${userId}`);
     return response.data;
   },
+
+  remove: async (userId: string, contactId: string) => {
+    const response = await api.delete(`/contacts/${userId}/${contactId}`);
+    return response.data;
+  },
 };
 
 // Groups API

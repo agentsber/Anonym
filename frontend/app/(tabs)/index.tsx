@@ -9,15 +9,17 @@ import {
   SectionList,
   Animated,
   Easing,
+  Alert,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useChatStore } from '../../src/stores/chatStore';
-import { groupsApi } from '../../src/services/api';
-import { ContactItem } from '../../src/components/ContactItem';
+import { groupsApi, contactsApi } from '../../src/services/api';
+import { SwipeableContactItem } from '../../src/components/SwipeableContactItem';
 import { User, Group } from '../../src/types';
 import { AnimatedListItem, FadeInView, ScaleButton } from '../../src/components/AnimatedComponents';
 
@@ -163,16 +165,31 @@ export default function ChatsScreen() {
     </AnimatedListItem>
   );
 
+  const handleDeleteChat = async (contactId: string) => {
+    if (!user) return;
+    
+    try {
+      // Remove contact from backend
+      await contactsApi.remove(user.id, contactId);
+      // Reload contacts
+      loadContacts(user.id);
+    } catch (err) {
+      console.error('Failed to delete chat:', err);
+      Alert.alert('Ошибка', 'Не удалось удалить чат');
+    }
+  };
+
   const renderContact = ({ item, index }: { item: User; index: number }) => (
     <AnimatedListItem 
       index={index} 
       onPress={() => handleContactPress(item)}
     >
-      <ContactItem
+      <SwipeableContactItem
         contact={item}
         lastMessage={getLastMessage(item.id)}
         unreadCount={getUnreadCount(item.id)}
         onPress={() => handleContactPress(item)}
+        onDelete={handleDeleteChat}
       />
     </AnimatedListItem>
   );
