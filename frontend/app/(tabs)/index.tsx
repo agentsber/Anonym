@@ -35,7 +35,7 @@ const COLORS = {
 export default function ChatsScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { contacts, chats, loadContacts, fetchPendingMessages, loadLocalMessages } = useChatStore();
+  const { contacts, chats, unreadCounts, loadContacts, fetchPendingMessages, loadLocalMessages, getUnreadCount } = useChatStore();
   const [refreshing, setRefreshing] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
   const pollingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -171,6 +171,7 @@ export default function ChatsScreen() {
       <ContactItem
         contact={item}
         lastMessage={getLastMessage(item.id)}
+        unreadCount={getUnreadCount(item.id)}
         onPress={() => handleContactPress(item)}
       />
     </AnimatedListItem>

@@ -12,6 +12,7 @@ const STORAGE_KEYS = {
 interface ChatState {
   contacts: User[];
   chats: Map<string, Message[]>;
+  unreadCounts: Map<string, number>;
   currentChat: string | null;
   isLoading: boolean;
   error: string | null;
@@ -40,6 +41,8 @@ interface ChatState {
   fetchPendingMessages: (userId: string, secretKey: string) => Promise<void>;
   setCurrentChat: (contactId: string | null) => void;
   getMessages: (contactId: string) => Message[];
+  getUnreadCount: (contactId: string) => number;
+  markAsRead: (contactId: string) => void;
   loadLocalMessages: (userId: string) => Promise<void>;
   saveLocalMessages: (userId: string) => Promise<void>;
   updateMessage: (contactId: string, messageId: string, updates: Partial<Message>) => void;
@@ -50,6 +53,7 @@ interface ChatState {
 export const useChatStore = create<ChatState>((set, get) => ({
   contacts: [],
   chats: new Map(),
+  unreadCounts: new Map(),
   currentChat: null,
   isLoading: false,
   error: null,
@@ -268,7 +272,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           };
           
           // Add to chat
-          const { chats } = get();
+          const { chats, unreadCounts, currentChat } = get();
           const chatMessages = chats.get(msg.sender_id) || [];
           const newChats = new Map(chats);
           
@@ -276,6 +280,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
           if (!chatMessages.find(m => m.id === msg.id)) {
             newChats.set(msg.sender_id, [...chatMessages, message]);
             set({ chats: newChats });
+            
+            // Increment unread count if not in current chat
+            if (currentChat !== msg.sender_id) {
+              const newUnreadCounts = new Map(unreadCounts);
+              const currentCount = newUnreadCounts.get(msg.sender_id) || 0;
+              newUnreadCounts.set(msg.sender_id, currentCount + 1);
+              set({ unreadCounts: newUnreadCounts });
+            }
           }
           
           // Mark as delivered on server (delete from relay)
@@ -292,10 +304,28 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setCurrentChat: (contactId: string | null) => {
     set({ currentChat: contactId });
+    // Clear unread count when opening chat
+    if (contactId) {
+      const { unreadCounts } = get();
+      const newUnreadCounts = new Map(unreadCounts);
+      newUnreadCounts.set(contactId, 0);
+      set({ unreadCounts: newUnreadCounts });
+    }
   },
 
   getMessages: (contactId: string): Message[] => {
     return get().chats.get(contactId) || [];
+  },
+
+  getUnreadCount: (contactId: string): number => {
+    return get().unreadCounts.get(contactId) || 0;
+  },
+
+  markAsRead: (contactId: string) => {
+    const { unreadCounts } = get();
+    const newUnreadCounts = new Map(unreadCounts);
+    newUnreadCounts.set(contactId, 0);
+    set({ unreadCounts: newUnreadCounts });
   },
 
   loadLocalMessages: async (userId: string) => {
