@@ -25,7 +25,7 @@
     },
     "android": {
       "package": "com.anonx.message",
-      "versionCode": 13,
+      "versionCode": 14,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#000000"
