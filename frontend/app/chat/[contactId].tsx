@@ -578,29 +578,33 @@ export default function ChatScreen() {
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <KeyboardAvoidingView
           style={styles.keyboardView}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
         >
-          {messages.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.encryptionIcon}>
-                <Ionicons name="lock-closed" size={24} color="#007AFF" />
+          <View style={styles.messagesContainer}>
+            {messages.length === 0 ? (
+              <View style={styles.emptyState}>
+                <View style={styles.encryptionIcon}>
+                  <Ionicons name="lock-closed" size={24} color="#007AFF" />
+                </View>
+                <Text style={styles.emptyTitle}>Сквозное шифрование</Text>
+                <Text style={styles.emptyText}>
+                  Сообщения в этом чате защищены{`\n`}сквозным шифрованием.
+                </Text>
               </View>
-              <Text style={styles.emptyTitle}>Сквозное шифрование</Text>
-              <Text style={styles.emptyText}>
-                Сообщения в этом чате защищены{`\n`}сквозным шифрованием.
-              </Text>
-            </View>
-          ) : (
-            <FlatList
-              ref={flatListRef}
-              data={messages}
-              renderItem={renderMessage}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.messagesList}
-              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-            />
-          )}
+            ) : (
+              <FlatList
+                ref={flatListRef}
+                data={messages}
+                renderItem={renderMessage}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.messagesList}
+                onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
+              />
+            )}
+          </View>
           
           {/* Reply/Edit Preview */}
           {(replyTo || editingMessage) && (
@@ -810,6 +814,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   keyboardView: {
+    flex: 1,
+  },
+  messagesContainer: {
     flex: 1,
   },
   headerTitle: {
