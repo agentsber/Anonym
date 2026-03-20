@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet, AppState, AppStateStatus, Platform } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, AppState, AppStateStatus, Platform, Text } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../src/stores/authStore';
 import { useSecurityStore } from '../src/stores/securityStore';
@@ -17,6 +17,7 @@ const COLORS = {
   surface: '#1A1A1A',
   primary: '#6C5CE7',
   text: '#FFFFFF',
+  textSecondary: 'rgba(255, 255, 255, 0.5)',
 };
 
 function RootLayoutContent() {
@@ -158,6 +159,10 @@ function RootLayoutContent() {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Ожидание сети</Text>
+        <Text style={styles.serverInfo}>
+          Сервер: {process.env.EXPO_PUBLIC_BACKEND_URL || 'https://private-social-18.preview.emergentagent.com'}
+        </Text>
       </View>
     );
   }
@@ -241,5 +246,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    color: COLORS.text,
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 20,
+  },
+  serverInfo: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    marginTop: 12,
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
 });
