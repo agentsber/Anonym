@@ -299,7 +299,7 @@ export default function RegisterScreen() {
                 </LinearGradient>
               </View>
               
-              <Text style={styles.title}>Anonym X</Text>
+              <Text style={styles.title}>Private</Text>
               <Text style={styles.description}>
                 Безопасный мессенджер с{'\n'}E2E шифрованием
               </Text>

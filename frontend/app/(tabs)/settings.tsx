@@ -332,7 +332,7 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Anonym X v1.0</Text>
+            <Text style={styles.footerText}>Private v1.0</Text>
             <Text style={styles.footerSubtext}>Защищённый мессенджер</Text>
           </View>
         </ScrollView>

@@ -159,7 +159,7 @@ export default function WelcomeScreen() {
               transform: [{ translateY: titleTranslateY }],
             },
           ]}>
-            Anonym X
+            Private
           </Animated.Text>
           <Animated.Text style={[
             styles.subtitle,

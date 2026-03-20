@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Anonym X",
-    "slug": "anonym-x",
+    "name": "Private",
+    "slug": "private-messenger",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "anonymx",
+    "scheme": "privatemsg",
     "userInterfaceStyle": "dark",
     "newArchEnabled": false,
     "ios": {

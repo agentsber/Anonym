@@ -190,7 +190,7 @@ export default function LockScreen() {
             {error ? (
               <Text style={styles.error}>{error}</Text>
             ) : (
-              <Text style={styles.subtitle}>Для доступа к Anonym X</Text>
+              <Text style={styles.subtitle}>Для доступа к Private</Text>
             )}
           </View>
           
