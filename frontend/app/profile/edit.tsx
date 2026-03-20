@@ -10,11 +10,14 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { useAuthStore } from '../../src/stores/authStore';
 import { usersApi } from '../../src/services/api';
 
@@ -35,10 +38,12 @@ export default function EditProfileScreen() {
   const { user, setUser } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [birthday, setBirthday] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfile();
@@ -52,10 +57,64 @@ export default function EditProfileScreen() {
       setDisplayName(profile.display_name || '');
       setBio(profile.bio || '');
       setBirthday(profile.birthday || '');
+      setAvatarUrl(profile.avatar_url || null);
     } catch (err) {
       console.error('Failed to load profile:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleChangePhoto = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (!permissionResult.granted) {
+        Alert.alert('Ошибка', 'Нужен доступ к галерее');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setIsUploadingPhoto(true);
+        
+        const uri = result.assets[0].uri;
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: 'base64',
+        });
+        
+        // Upload avatar
+        const response = await fetch(
+          `${process.env.EXPO_PUBLIC_BACKEND_URL || 'https://private-social-18.preview.emergentagent.com'}/api/upload/avatar`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: user?.id,
+              image_data: base64,
+            }),
+          }
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          setAvatarUrl(data.url);
+          Alert.alert('Успешно', 'Фото обновлено');
+        } else {
+          throw new Error('Upload failed');
+        }
+      }
+    } catch (err) {
+      console.error('Photo upload error:', err);
+      Alert.alert('Ошибка', 'Не удалось загрузить фото');
+    } finally {
+      setIsUploadingPhoto(false);
     }
   };
 
@@ -67,6 +126,7 @@ export default function EditProfileScreen() {
         display_name: displayName,
         bio: bio,
         birthday: birthday,
+        avatar_url: avatarUrl || undefined,
       });
       
       Alert.alert('Успешно', 'Профиль обновлён');
@@ -124,16 +184,31 @@ export default function EditProfileScreen() {
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {/* Avatar Section */}
           <View style={styles.avatarSection}>
-            <LinearGradient
-              colors={getAvatarColors()}
-              style={styles.avatar}
+            {avatarUrl ? (
+              <Image 
+                source={{ uri: avatarUrl }} 
+                style={styles.avatarImage}
+              />
+            ) : (
+              <LinearGradient
+                colors={getAvatarColors()}
+                style={styles.avatar}
+              >
+                <Text style={styles.avatarText}>
+                  {user?.username?.charAt(0).toUpperCase()}
+                </Text>
+              </LinearGradient>
+            )}
+            <TouchableOpacity 
+              style={styles.changePhotoButton} 
+              onPress={handleChangePhoto}
+              disabled={isUploadingPhoto}
             >
-              <Text style={styles.avatarText}>
-                {user?.username?.charAt(0).toUpperCase()}
-              </Text>
-            </LinearGradient>
-            <TouchableOpacity style={styles.changePhotoButton}>
-              <Text style={styles.changePhotoText}>Изменить фото</Text>
+              {isUploadingPhoto ? (
+                <ActivityIndicator size="small" color={COLORS.primary} />
+              ) : (
+                <Text style={styles.changePhotoText}>Изменить фото</Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -235,6 +310,11 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
   },
   avatarText: {
     fontSize: 40,

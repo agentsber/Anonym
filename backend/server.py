@@ -1836,6 +1836,66 @@ async def get_voice_message(file_id: str):
         headers={"Content-Disposition": f'attachment; filename="voice_{file_id}.m4a"'}
     )
 
+# ==================== Avatar Upload API ====================
+
+class AvatarUpload(BaseModel):
+    user_id: str
+    image_data: str  # Base64 encoded image
+
+@api_router.post("/upload/avatar")
+async def upload_avatar(data: AvatarUpload):
+    """Upload user avatar"""
+    # Verify user exists
+    user = await db.users.find_one({"id": data.user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Generate unique file ID
+    file_id = str(uuid.uuid4())
+    
+    # Store avatar
+    avatar_doc = {
+        "id": file_id,
+        "user_id": data.user_id,
+        "data": data.image_data,
+        "created_at": datetime.utcnow()
+    }
+    
+    await db.avatars.insert_one(avatar_doc)
+    
+    # Update user's avatar_url
+    avatar_url = f"/api/avatar/{file_id}"
+    await db.users.update_one(
+        {"id": data.user_id},
+        {"$set": {"avatar_url": avatar_url}}
+    )
+    
+    logger.info(f"Avatar uploaded for user {data.user_id}")
+    
+    return {
+        "id": file_id,
+        "url": avatar_url
+    }
+
+@api_router.get("/avatar/{file_id}")
+async def get_avatar(file_id: str):
+    """Get avatar image"""
+    avatar = await db.avatars.find_one({"id": file_id})
+    if not avatar:
+        raise HTTPException(status_code=404, detail="Avatar not found")
+    
+    # Decode base64 content
+    try:
+        content = base64.b64decode(avatar["data"])
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to decode avatar")
+    
+    return Response(
+        content=content,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=31536000"}
+    )
+
 # ==================== WebSocket Endpoint ====================
 
 @app.websocket("/ws/{user_id}")

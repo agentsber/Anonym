@@ -202,6 +202,16 @@ export default function RecordVideoScreen() {
     setIsUploading(true);
     
     try {
+      // Get file info
+      const fileInfo = await FileSystem.getInfoAsync(videoUri);
+      
+      // Check file size (50MB limit)
+      if (fileInfo.exists && 'size' in fileInfo && fileInfo.size > MAX_VIDEO_SIZE) {
+        Alert.alert('Ошибка', 'Видео слишком большое. Максимум 50 МБ');
+        setIsUploading(false);
+        return;
+      }
+      
       const base64 = await FileSystem.readAsStringAsync(videoUri, {
         encoding: 'base64',
       });
@@ -230,9 +240,10 @@ export default function RecordVideoScreen() {
       Alert.alert('Успешно', 'Видео опубликовано!', [
         { text: 'OK', onPress: () => router.back() }
       ]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload error:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить видео');
+      const errorMsg = error?.response?.data?.detail || error?.message || 'Не удалось загрузить видео';
+      Alert.alert('Ошибка', errorMsg);
     } finally {
       setIsUploading(false);
     }

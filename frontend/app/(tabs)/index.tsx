@@ -38,13 +38,27 @@ export default function ChatsScreen() {
   const { contacts, chats, loadContacts, fetchPendingMessages, loadLocalMessages } = useChatStore();
   const [refreshing, setRefreshing] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
+  const pollingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (user) {
       loadContacts(user.id);
       loadLocalMessages(user.id);
       loadGroups();
+      
+      // Start auto-refresh polling (every 5 seconds)
+      pollingInterval.current = setInterval(() => {
+        if ((user as any).exchangeSecretKey) {
+          fetchPendingMessages(user.id, (user as any).exchangeSecretKey);
+        }
+      }, 5000);
     }
+    
+    return () => {
+      if (pollingInterval.current) {
+        clearInterval(pollingInterval.current);
+      }
+    };
   }, [user]);
 
   // Обновление списка групп при каждом фокусе на экране
@@ -53,6 +67,10 @@ export default function ChatsScreen() {
       if (user) {
         loadGroups();
         loadContacts(user.id);
+        // Fetch new messages when screen is focused
+        if ((user as any).exchangeSecretKey) {
+          fetchPendingMessages(user.id, (user as any).exchangeSecretKey);
+        }
       }
     }, [user])
   );
