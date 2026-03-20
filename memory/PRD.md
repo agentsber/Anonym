@@ -1,21 +1,17 @@
 # Private - Secure Android Messenger
 
-## App Name: Private (previously Anonym X)
+## App Name: Private
 
-## Design Update (2026-03-14)
-- **Style:** Минималистичный (как Telegram) + Glassmorphism
-- **Colors:** Фиолетовый акцент (#6C5CE7), чёрный фон (#000000)
-- **Effects:** Прозрачные surfaces, gradient orbs, subtle borders
+## Latest Updates (2026-03-14)
 
-### Updated Screens
-- Welcome screen - gradient logo, glass feature cards
-- Auth (Login/Register) - clean minimal form with gradient button
-- Tabs navigation - active icon highlight
-- Settings - updated colors
-- Reels - updated colors
+### Animation System Added
+- **Screen Transitions:** slide_from_right, slide_from_bottom, fade effects
+- **List Animations:** Staggered fade-in for chat items (50ms delay per item)
+- **Button Animations:** Scale on press (0.95-1.0)
+- **Empty States:** FadeInView with subtle translate
 
-### Design System
-```
+### Design System (Minimalist + Glassmorphism)
+```javascript
 COLORS = {
   background: '#000000',
   surface: 'rgba(255, 255, 255, 0.05)',
@@ -29,20 +25,31 @@ COLORS = {
 }
 ```
 
+### New Animation Components
+File: `/app/frontend/src/components/AnimatedComponents.tsx`
+- `AnimatedListItem` - Staggered list items with press scale
+- `FadeInView` - Fade + translateY entrance
+- `ScaleButton` - Spring scale on press
+- `PulseView` - Looping pulse animation
+- `SlideInView` - Directional slide entrance
+
+### Screen Animations (_layout.tsx)
+| Screen | Animation | Duration |
+|--------|-----------|----------|
+| Welcome | fade | 300ms |
+| Auth | slide_from_bottom | 300ms |
+| Chat | slide_from_right | 250ms |
+| Search | modal + slide_from_bottom | - |
+| Video Record | slide_from_bottom | 300ms |
+| Video Call | fullScreenModal + fade | - |
+
 ## Core Features
 - [x] E2E encrypted messaging
 - [x] Video/Audio Calls (WebRTC)
 - [x] Video Feed (Reels) with Editor
-- [x] Push & Local Notifications
+- [x] Push & Local Notifications  
 - [x] Performance optimization (MongoDB indexes)
-- [x] New minimal design with glassmorphism
+- [x] Minimalist + Glassmorphism design
+- [x] **Smooth transition animations**
 
-## Current Version: 17
-
-## Files Changed
-- `app/index.tsx` - New welcome screen
-- `app/auth/register.tsx` - New auth screen
-- `app/(tabs)/_layout.tsx` - New tab design
-- `app/(tabs)/settings.tsx` - Updated colors
-- `app/(tabs)/reels.tsx` - Updated colors
-- `app/(tabs)/index.tsx` - Updated colors
+## Current Version: 18

@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   RefreshControl,
   SectionList,
+  Animated,
+  Easing,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,6 +19,7 @@ import { useChatStore } from '../../src/stores/chatStore';
 import { groupsApi } from '../../src/services/api';
 import { ContactItem } from '../../src/components/ContactItem';
 import { User, Group } from '../../src/types';
+import { AnimatedListItem, FadeInView, ScaleButton } from '../../src/components/AnimatedComponents';
 
 const COLORS = {
   background: '#000000',
@@ -108,11 +111,11 @@ export default function ChatsScreen() {
     return date.toLocaleDateString('ru-RU', { month: 'short', day: 'numeric' });
   };
 
-  const renderGroupItem = ({ item }: { item: Group }) => (
-    <TouchableOpacity 
-      style={styles.groupItem}
+  const renderGroupItem = ({ item, index }: { item: Group; index: number }) => (
+    <AnimatedListItem
+      index={index}
       onPress={() => handleGroupPress(item)}
-      activeOpacity={0.7}
+      style={styles.groupItem}
     >
       <LinearGradient
         colors={[item.avatar_color || COLORS.primary, item.avatar_color ? item.avatar_color + '99' : COLORS.primaryLight]}
@@ -139,19 +142,24 @@ export default function ChatsScreen() {
           </Text>
         </View>
       </View>
-    </TouchableOpacity>
+    </AnimatedListItem>
   );
 
-  const renderContact = ({ item }: { item: User }) => (
-    <ContactItem
-      contact={item}
-      lastMessage={getLastMessage(item.id)}
+  const renderContact = ({ item, index }: { item: User; index: number }) => (
+    <AnimatedListItem 
+      index={index} 
       onPress={() => handleContactPress(item)}
-    />
+    >
+      <ContactItem
+        contact={item}
+        lastMessage={getLastMessage(item.id)}
+        onPress={() => handleContactPress(item)}
+      />
+    </AnimatedListItem>
   );
 
   const EmptyState = () => (
-    <View style={styles.emptyState}>
+    <FadeInView style={styles.emptyState} delay={200}>
       <View style={styles.emptyIconContainer}>
         <Ionicons name="chatbubbles-outline" size={48} color={COLORS.primary} />
       </View>
@@ -175,7 +183,7 @@ export default function ChatsScreen() {
           <Text style={[styles.emptyButtonText, { color: '#FFF' }]}>Создать группу</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </FadeInView>
   );
 
   const hasContent = contacts.length > 0 || groups.length > 0;
@@ -206,10 +214,10 @@ export default function ChatsScreen() {
         ) : (
           <FlatList
             data={[...groups.map(g => ({ ...g, _type: 'group' })), ...contacts.map(c => ({ ...c, _type: 'contact' }))]}
-            renderItem={({ item }: { item: any }) => 
+            renderItem={({ item, index }: { item: any; index: number }) => 
               item._type === 'group' 
-                ? renderGroupItem({ item }) 
-                : renderContact({ item })
+                ? renderGroupItem({ item, index }) 
+                : renderContact({ item, index })
             }
             keyExtractor={(item: any) => item._type + '_' + item.id}
             contentContainerStyle={styles.listContainer}

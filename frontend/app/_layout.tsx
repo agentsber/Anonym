@@ -171,17 +171,56 @@ function RootLayoutContent() {
           headerTintColor: COLORS.text,
           headerTitleStyle: { fontWeight: '600' },
           contentStyle: { backgroundColor: COLORS.background },
+          animation: 'slide_from_right',
+          animationDuration: 250,
         }}
       >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="auth/register" options={{ title: 'Регистрация', headerBackTitle: 'Назад' }} />
+        <Stack.Screen name="index" options={{ headerShown: false, animation: 'fade' }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
+        <Stack.Screen 
+          name="auth/register" 
+          options={{ 
+            headerShown: false,
+            animation: 'slide_from_bottom',
+            animationDuration: 300,
+          }} 
+        />
         <Stack.Screen name="auth/login" options={{ title: 'Вход', headerBackTitle: 'Назад' }} />
-        <Stack.Screen name="chat/[contactId]" options={{ title: 'Чат', headerBackTitle: 'Назад' }} />
-        <Stack.Screen name="search" options={{ title: 'Поиск', headerBackTitle: 'Назад', presentation: 'modal' }} />
-        <Stack.Screen name="security/lock" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen 
+          name="chat/[contactId]" 
+          options={{ 
+            title: 'Чат', 
+            headerBackTitle: 'Назад',
+            animation: 'slide_from_right',
+          }} 
+        />
+        <Stack.Screen 
+          name="search" 
+          options={{ 
+            title: 'Поиск', 
+            headerBackTitle: 'Назад', 
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+          }} 
+        />
+        <Stack.Screen 
+          name="notification-settings" 
+          options={{ 
+            headerShown: false,
+            animation: 'slide_from_right',
+          }} 
+        />
+        <Stack.Screen 
+          name="record-video" 
+          options={{ 
+            headerShown: false, 
+            animation: 'slide_from_bottom',
+            animationDuration: 300,
+          }} 
+        />
+        <Stack.Screen name="security/lock" options={{ headerShown: false, gestureEnabled: false, animation: 'fade' }} />
         <Stack.Screen name="security/setup-pin" options={{ title: 'Установка PIN', headerBackTitle: 'Назад' }} />
-        <Stack.Screen name="video-call" options={{ headerShown: false, gestureEnabled: false, presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="video-call" options={{ headerShown: false, gestureEnabled: false, presentation: 'fullScreenModal', animation: 'fade' }} />
       </Stack>
       <IncomingCallOverlay />
     </>
