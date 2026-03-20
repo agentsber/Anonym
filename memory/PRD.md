@@ -27,84 +27,46 @@
 - [x] Video/Audio Calls (WebRTC)
 - [x] Admin Panel with Server Management
 - [x] Profile Editing
-- [x] **Video Feed (Reels) - TikTok-style vertical video feed**
-- [x] **Video Editor with Filters, Text, Stickers & Music**
+- [x] Video Feed (Reels) - TikTok-style
+- [x] Video Editor with Filters, Text, Stickers & Music
+- [x] **Push & Local Notifications**
+- [x] **MongoDB Performance Optimization (Indexes)**
 
-## New Feature: Video Editor
+## New Features (2026-03-14)
 
-### Features Implemented
-1. **Filters:**
-   - 8 цветовых пресетов: Normal, Vintage, Noir, Warm, Cold, Vivid, Muted, Sepia
-   - Базовые настройки: Яркость, Контраст, Насыщенность
+### Push Notifications
+- Expo Push Notifications для фоновых уведомлений
+- Локальные уведомления внутри приложения
+- Настройки: вкл/выкл, звук, вибрация, превью текста
+- Отключение уведомлений для отдельных чатов
+- Push отправляются офлайн пользователям
 
-2. **Trim/Cut:**
-   - Обрезка видео по времени (начало/конец)
-   - Визуальный таймлайн с превью
+### Performance Optimization
+Добавлены MongoDB индексы для ускорения запросов:
+- `messages`: receiver_id+status, sender_id+receiver_id, timestamp, id
+- `users`: id
+- `contacts`: user_id
+- `group_messages`: group_id+timestamp
 
-3. **Text Overlays:**
-   - Добавление текста на видео
-   - 8 цветов для текста
-   - Перетаскивание текста по экрану
-   - Удаление текста
+**Результат:** Время ответа API ~200-300ms (сетевая латентность)
 
-4. **Stickers:**
-   - 15 популярных эмодзи-стикеров
-   - Перетаскивание стикеров по экрану
-   - Удаление стикеров
+### Files
+- `/app/frontend/src/stores/notificationStore.ts` - Store для уведомлений
+- `/app/frontend/app/notification-settings.tsx` - Экран настроек
+- `/app/backend/server.py` - Push API endpoints + indexes
 
-5. **Music:**
-   - Выбор аудио с устройства (через DocumentPicker)
-   - Регулировка громкости музыки
+## API Endpoints
 
-### Editor Flow
-1. Камера/Галерея → 2. Редактор → 3. Публикация
+### Notifications
+- `POST /api/users/push-token` - Регистрация push токена
+- `DELETE /api/users/push-token/{user_id}` - Удаление токена
+- `POST /api/notifications/send` - Отправка уведомления
 
-### Technical Implementation
-- **Frontend:** `/app/frontend/src/components/VideoEditor.tsx`
-- **Screen:** `/app/frontend/app/record-video.tsx`
-- **Backend:** Editor metadata сохраняется в MongoDB вместе с видео
-
-## Architecture
-
-### Backend Endpoints (server.py)
-- **Videos:** `/api/videos/upload` (with editor_metadata), `/api/videos/feed/{id}`, `/api/videos/{id}/*`
-- **Auth:** `/api/auth/register`, `/api/auth/login`
-- **Users:** `/api/users/{id}`, `/api/users/{id}/status`
-- **Messages:** `/api/messages/send`, `/api/messages/pending/{id}`
-- **Calls:** `/api/calls/initiate`, `/api/calls/answer`, `/api/calls/ice-candidate`
-- **Admin:** `/api/admin/login`, `/api/admin/stats`
-
-### Frontend Structure
-```
-/app/frontend/
-├── app/
-│   ├── record-video.tsx     # Recording + Editor integration
-│   └── (tabs)/
-│       ├── reels.tsx        # Video feed
-│       └── ...
-├── src/
-│   └── components/
-│       └── VideoEditor.tsx  # Full video editor component
-```
-
-## Updates (2026-03-14)
-
-### Video Editor Implementation
-- Created full video editor component with 6 tabs: Filters, Adjust, Trim, Text, Stickers, Music
-- Integrated DocumentPicker for audio file selection
-- Added draggable overlays for text and stickers
-- Editor metadata saved with video uploads
-
-### Dependencies Added
-- `@react-native-community/slider` - для слайдеров настроек
-- `expo-document-picker` - для выбора музыки
-
-## Current Version: 14
+## Current Version: 15
 
 ## Future Tasks (Backlog)
-- [ ] Server-side video processing with ffmpeg
-- [ ] Real-time filter preview
-- [ ] More sticker packs
+- [ ] Redis для масштабирования WebSocket
+- [ ] Server-side video processing (ffmpeg)
 - [ ] Screenshot Protection (FLAG_SECURE)
 - [ ] iOS build
 

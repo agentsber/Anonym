@@ -6,6 +6,7 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import asyncio
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict
@@ -15,6 +16,7 @@ import json
 import base64
 import hashlib
 import secrets
+import httpx
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -560,6 +562,16 @@ async def send_message(message: MessageSend):
             }
         }
         await manager.send_personal_message(notification, message.receiver_id)
+    else:
+        # Send push notification for offline user (non-blocking)
+        asyncio.create_task(
+            notify_new_message(
+                message.receiver_id,
+                sender.get("username", "Unknown"),
+                "Новое сообщение" if message.message_type == "text" else f"[{message.message_type}]",
+                message.sender_id
+            )
+        )
     
     return MessageResponse(
         id=message_id,
@@ -2675,6 +2687,115 @@ async def get_active_call(user_id: str):
     
     return {"has_active_call": False}
 
+# ==================== Push Notifications ====================
+
+class PushTokenRegister(BaseModel):
+    user_id: str
+    push_token: str
+    platform: str = "android"  # android or ios
+
+class SendNotification(BaseModel):
+    user_id: str
+    title: str
+    body: str
+    data: Optional[Dict] = None
+
+# Expo Push Notification API
+EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
+
+async def send_push_notification(push_token: str, title: str, body: str, data: dict = None):
+    """Send push notification via Expo Push API"""
+    if not push_token or not push_token.startswith("ExponentPushToken"):
+        return False
+    
+    message = {
+        "to": push_token,
+        "sound": "default",
+        "title": title,
+        "body": body,
+        "data": data or {},
+        "channelId": "messages",
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                EXPO_PUSH_URL,
+                json=message,
+                headers={"Content-Type": "application/json"},
+            )
+            logger.info(f"Push notification sent: {response.status_code}")
+            return response.status_code == 200
+    except Exception as e:
+        logger.error(f"Failed to send push notification: {e}")
+        return False
+
+@api_router.post("/users/push-token")
+async def register_push_token(data: PushTokenRegister):
+    """Register or update push token for a user"""
+    user = await db.users.find_one({"id": data.user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Update user's push token
+    await db.users.update_one(
+        {"id": data.user_id},
+        {"$set": {
+            "push_token": data.push_token,
+            "push_platform": data.platform,
+            "push_updated_at": datetime.utcnow()
+        }}
+    )
+    
+    logger.info(f"Push token registered for user {data.user_id}")
+    return {"status": "registered"}
+
+@api_router.delete("/users/push-token/{user_id}")
+async def remove_push_token(user_id: str):
+    """Remove push token for a user (on logout)"""
+    await db.users.update_one(
+        {"id": user_id},
+        {"$unset": {"push_token": "", "push_platform": ""}}
+    )
+    return {"status": "removed"}
+
+@api_router.post("/notifications/send")
+async def send_notification_to_user(notif: SendNotification):
+    """Send push notification to a specific user"""
+    user = await db.users.find_one({"id": notif.user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    push_token = user.get("push_token")
+    if not push_token:
+        return {"status": "no_token", "message": "User has no push token registered"}
+    
+    success = await send_push_notification(
+        push_token,
+        notif.title,
+        notif.body,
+        notif.data
+    )
+    
+    return {"status": "sent" if success else "failed"}
+
+# Helper to send message notification
+async def notify_new_message(recipient_id: str, sender_name: str, message_preview: str, chat_id: str):
+    """Send notification for new message"""
+    user = await db.users.find_one({"id": recipient_id})
+    if not user or not user.get("push_token"):
+        return False
+    
+    # Truncate message preview
+    preview = message_preview[:50] + "..." if len(message_preview) > 50 else message_preview
+    
+    return await send_push_notification(
+        user["push_token"],
+        f"Сообщение от {sender_name}",
+        preview,
+        {"type": "message", "chat_id": chat_id, "sender_id": recipient_id}
+    )
+
 # ==================== Video Feed (Reels) ====================
 
 class VideoCreate(BaseModel):
@@ -2922,6 +3043,45 @@ async def get_user_videos(target_user_id: str, viewer_id: str = None, skip: int 
 
 # Include the router in the main app
 app.include_router(api_router)
+
+# Create database indexes for performance
+@app.on_event("startup")
+async def create_indexes():
+    """Create MongoDB indexes for faster queries"""
+    try:
+        # Messages indexes - critical for performance
+        await db.messages.create_index([("receiver_id", 1), ("status", 1)])
+        await db.messages.create_index([("sender_id", 1), ("receiver_id", 1)])
+        await db.messages.create_index([("timestamp", -1)])
+        await db.messages.create_index("id")
+        
+        # Users indexes
+        await db.users.create_index("id")
+        await db.users.create_index("email", sparse=True)
+        await db.users.create_index("username", sparse=True)
+        
+        # Contacts indexes
+        await db.contacts.create_index([("user_id", 1), ("contact_id", 1)])
+        await db.contacts.create_index("user_id")
+        
+        # Groups indexes
+        await db.groups.create_index("id")
+        await db.group_members.create_index([("group_id", 1), ("user_id", 1)])
+        await db.group_members.create_index("user_id")
+        await db.group_messages.create_index([("group_id", 1), ("timestamp", -1)])
+        await db.group_messages.create_index("id")
+        
+        # Videos indexes
+        await db.videos.create_index("id")
+        await db.videos.create_index([("user_id", 1), ("created_at", -1)])
+        await db.videos.create_index([("privacy", 1), ("created_at", -1)])
+        
+        # Media indexes
+        await db.media.create_index("id")
+        
+        logger.info("Database indexes created successfully")
+    except Exception as e:
+        logger.warning(f"Index creation warning: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

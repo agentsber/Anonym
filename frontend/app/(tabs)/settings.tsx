@@ -238,6 +238,26 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Уведомления</Text>
+            
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={() => router.push('/notification-settings' as any)}
+            >
+              <View style={[styles.menuIcon, { backgroundColor: '#FF9F43' + '20' }]}>
+                <Ionicons name="notifications" size={20} color="#FF9F43" />
+              </View>
+              <View style={styles.menuItemContent}>
+                <Text style={styles.menuItemText}>Настройки уведомлений</Text>
+                <Text style={styles.menuItemSubtext}>
+                  Звуки, вибрация, приватность
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>Безопасность</Text>
             
             <View style={styles.infoCard}>

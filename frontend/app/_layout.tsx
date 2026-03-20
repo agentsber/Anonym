@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, AppState, AppStateStatus, Platform } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../src/stores/authStore';
 import { useSecurityStore } from '../src/stores/securityStore';
 import { useCallStore } from '../src/stores/callStore';
+import { useNotificationStore, setupNotificationListeners } from '../src/stores/notificationStore';
 import IncomingCallOverlay from '../src/components/IncomingCallOverlay';
 import api from '../src/services/api';
 
@@ -19,15 +20,41 @@ const COLORS = {
 };
 
 function RootLayoutContent() {
+  const router = useRouter();
   const { initialize: initAuth, isInitialized: authInitialized, isLoading: authLoading, user } = useAuthStore();
   const { initialize: initSecurity, isInitialized: securityInitialized, isLocked, isPinSet, lock } = useSecurityStore();
   const { setUserId, handleIncomingCall, handleCallAnswered, handleCallRejected, handleCallEnded, handleIceCandidate, handleMediaUpdate } = useCallStore();
+  const { registerForPushNotifications, showLocalNotification, isChatMuted } = useNotificationStore();
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     initAuth();
     initSecurity();
   }, []);
+
+  // Register for push notifications when user logs in
+  useEffect(() => {
+    if (user?.id) {
+      registerForPushNotifications(user.id);
+      
+      // Setup notification listeners
+      const cleanup = setupNotificationListeners(
+        // On notification received (foreground)
+        (notification) => {
+          console.log('Notification in foreground:', notification);
+        },
+        // On notification tapped
+        (response) => {
+          const data = response.notification.request.content.data;
+          if (data?.type === 'message' && data?.chat_id) {
+            router.push(`/chat/${data.chat_id}` as any);
+          }
+        }
+      );
+      
+      return cleanup;
+    }
+  }, [user?.id]);
 
   // Initialize call store with user ID
   useEffect(() => {
