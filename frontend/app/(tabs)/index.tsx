@@ -249,13 +249,52 @@ export default function ChatsScreen() {
           <EmptyState />
         ) : (
           <FlatList
-            data={[...groups.map(g => ({ ...g, _type: 'group' })), ...contacts.map(c => ({ ...c, _type: 'contact' }))]}
-            renderItem={({ item, index }: { item: any; index: number }) => 
-              item._type === 'group' 
+            data={(() => {
+              const savedMessages = user ? chats.get(user.id) : undefined;
+              const hasSaved = savedMessages && savedMessages.length > 0;
+              
+              const items: any[] = [];
+              
+              // Add Saved Messages at the top if it has messages
+              if (hasSaved && user) {
+                items.push({
+                  id: user.id,
+                  username: 'Избранное',
+                  _type: 'saved',
+                  _isSaved: true,
+                });
+              }
+              
+              // Add groups and contacts
+              groups.forEach(g => items.push({ ...g, _type: 'group' }));
+              contacts.filter(c => c.id !== user?.id).forEach(c => items.push({ ...c, _type: 'contact' }));
+              
+              return items;
+            })()}
+            renderItem={({ item, index }: { item: any; index: number }) => {
+              if (item._isSaved) {
+                return (
+                  <AnimatedListItem 
+                    index={index} 
+                    onPress={() => router.push(`/chat/${item.id}`)}
+                  >
+                    <TouchableOpacity style={styles.savedItem} onPress={() => router.push(`/chat/${item.id}`)}>
+                      <View style={styles.savedAvatar}>
+                        <Ionicons name="bookmark" size={24} color="#FFD700" />
+                      </View>
+                      <View style={styles.savedContent}>
+                        <Text style={styles.savedTitle}>Избранное</Text>
+                        <Text style={styles.savedSubtitle}>Сохранённые сообщения</Text>
+                      </View>
+                    </TouchableOpacity>
+                  </AnimatedListItem>
+                );
+              }
+              return item._type === 'group' 
                 ? renderGroupItem({ item, index }) 
-                : renderContact({ item, index })
-            }
-            keyExtractor={(item: any) => item._type + '_' + item.id}
+                : renderContact({ item, index });
+            }}
+            keyExtractor={(item: any) => (item._isSaved ? 'saved_' : item._type + '_') + item.id}
             contentContainerStyle={styles.listContainer}
             refreshControl={
               <RefreshControl 
@@ -429,5 +468,33 @@ const styles = StyleSheet.create({
     height: 56,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  savedItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: COLORS.background,
+  },
+  savedAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  savedContent: {
+    flex: 1,
+  },
+  savedTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: 4,
+  },
+  savedSubtitle: {
+    fontSize: 15,
+    color: COLORS.textSecondary,
   },
 });

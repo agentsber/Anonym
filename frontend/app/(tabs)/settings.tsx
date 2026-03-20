@@ -181,6 +181,24 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.section}>
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={() => router.push(`/chat/${user?.id}` as any)}
+            >
+              <View style={[styles.menuIcon, { backgroundColor: '#FFD700' + '20' }]}>
+                <Ionicons name="bookmark" size={20} color="#FFD700" />
+              </View>
+              <View style={styles.menuItemContent}>
+                <Text style={styles.menuItemText}>Избранное</Text>
+                <Text style={styles.menuItemSubtext}>
+                  Сохранённые сообщения
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>Блокировка</Text>
             
             <TouchableOpacity style={styles.menuItem} onPress={handleSetupPin}>

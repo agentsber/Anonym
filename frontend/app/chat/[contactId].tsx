@@ -100,13 +100,27 @@ export default function ChatScreen() {
     return () => clearInterval(interval);
   }, [user]);
 
+  const isSavedMessages = contactId === user?.id;
+
   const loadContact = async () => {
     if (!contactId) return;
     
     setIsLoading(true);
     try {
-      const contactData = await usersApi.getUser(contactId);
-      setContact(contactData);
+      if (isSavedMessages && user) {
+        // Saved Messages - use current user as contact
+        setContact({
+          id: user.id,
+          username: 'Избранное',
+          public_key: user.public_key,
+          identity_key: (user as any).identity_key || '',
+          signed_prekey: (user as any).signed_prekey || '',
+          prekey_signature: (user as any).prekey_signature || '',
+        });
+      } else {
+        const contactData = await usersApi.getUser(contactId);
+        setContact(contactData);
+      }
     } catch (err) {
       console.error('Failed to load contact:', err);
     } finally {
@@ -528,11 +542,20 @@ export default function ChatScreen() {
           headerTintColor: COLORS.text,
           headerTitle: () => (
             <View style={styles.headerTitle}>
-              <Text style={styles.headerName}>@{contact?.username}</Text>
-              {renderHeaderSubtitle()}
+              {isSavedMessages ? (
+                <View style={styles.savedHeader}>
+                  <Ionicons name="bookmark" size={18} color="#FFD700" style={{ marginRight: 6 }} />
+                  <Text style={styles.headerName}>Избранное</Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.headerName}>@{contact?.username}</Text>
+                  {renderHeaderSubtitle()}
+                </>
+              )}
             </View>
           ),
-          headerRight: () => (
+          headerRight: () => isSavedMessages ? null : (
             <View style={styles.headerRight}>
               <TouchableOpacity 
                 style={styles.headerButton}
@@ -842,6 +865,10 @@ const styles = StyleSheet.create({
   },
   headerButton: {
     padding: 4,
+  },
+  savedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   encryptedBadge: {
     padding: 4,
