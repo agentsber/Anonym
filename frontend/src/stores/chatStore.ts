@@ -34,7 +34,7 @@ interface ChatState {
     mediaBase64: string,
     senderSecretKey: string,
     receiverPublicKey: string,
-    mediaType: 'image' | 'video',
+    mediaType: 'image' | 'video' | 'audio',
     fileName: string
   ) => Promise<void>;
   fetchPendingMessages: (userId: string, secretKey: string) => Promise<void>;
@@ -157,7 +157,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     mediaBase64: string,
     senderSecretKey: string,
     receiverPublicKey: string,
-    mediaType: 'image' | 'video',
+    mediaType: 'image' | 'video' | 'audio',
     fileName: string
   ) => {
     try {

@@ -23,21 +23,21 @@ import { Audio } from 'expo-av';
 import { useAuthStore } from '../../src/stores/authStore';
 import { useChatStore } from '../../src/stores/chatStore';
 import { usersApi, messagesApi } from '../../src/services/api';
-import { ChatBubble } from '../../src/components/ChatBubble';
+import { AnimatedChatBubble } from '../../src/components/AnimatedChatBubble';
 import { Message, User, AUTO_DELETE_OPTIONS } from '../../src/types';
 import { encryptMessage } from '../../src/services/crypto';
 
 const COLORS = {
-  background: '#0A0A0A',
-  surface: '#1A1A1A',
-  surfaceLight: '#252525',
+  background: '#000000',
+  surface: 'rgba(255, 255, 255, 0.05)',
+  surfaceLight: 'rgba(255, 255, 255, 0.08)',
   primary: '#6C5CE7',
   primaryLight: '#A29BFE',
   success: '#00D9A5',
   error: '#FF6B6B',
   text: '#FFFFFF',
-  textSecondary: '#8E8E93',
-  border: '#333333',
+  textSecondary: 'rgba(255, 255, 255, 0.6)',
+  border: 'rgba(255, 255, 255, 0.08)',
 };
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -238,26 +238,71 @@ export default function ChatScreen() {
     if (!user || !contact) return;
     
     try {
-      // Read file as base64
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const reader = new FileReader();
+      // Create FormData for upload
+      const formData = new FormData();
+      formData.append('file', {
+        uri: uri,
+        type: 'audio/m4a',
+        name: `voice_${Date.now()}.m4a`,
+      } as any);
+      formData.append('sender_id', user.id);
+      formData.append('duration', recordingDuration.toString());
       
-      reader.onloadend = async () => {
-        const base64 = (reader.result as string).split(',')[1];
-        
-        await sendMedia(
-          user.id,
-          contact.id,
-          base64,
-          (user as any).exchangeSecretKey,
-          contact.public_key,
-          'audio' as any,
-          `voice_${Date.now()}.m4a`
-        );
+      // Upload voice message
+      const uploadResponse = await fetch(
+        `${process.env.EXPO_PUBLIC_BACKEND_URL || 'https://private-social-18.preview.emergentagent.com'}/api/upload/voice`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+      
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload voice');
+      }
+      
+      const { url, duration } = await uploadResponse.json();
+      const fullUrl = `${process.env.EXPO_PUBLIC_BACKEND_URL || 'https://private-social-18.preview.emergentagent.com'}${url}`;
+      
+      // Send message with voice URL
+      const { encrypted, ephemeralPublicKey } = encryptMessage(
+        fullUrl,
+        contact.public_key,
+        (user as any).exchangeSecretKey
+      );
+      
+      await messagesApi.send({
+        sender_id: user.id,
+        receiver_id: contact.id,
+        encrypted_content: encrypted,
+        ephemeral_key: ephemeralPublicKey,
+        message_type: 'audio',
+      });
+      
+      // Add to local chat
+      const localMessage: Message = {
+        id: `voice_${Date.now()}`,
+        sender_id: user.id,
+        receiver_id: contact.id,
+        content: '',
+        message_type: 'audio',
+        status: 'sent',
+        timestamp: new Date(),
+        isOutgoing: true,
+        media_url: fullUrl,
+        duration: duration,
       };
       
-      reader.readAsDataURL(blob);
+      // Update local state through store
+      const { chats } = useChatStore.getState();
+      const chatMessages = chats.get(contact.id) || [];
+      const newChats = new Map(chats);
+      newChats.set(contact.id, [...chatMessages, localMessage]);
+      useChatStore.setState({ chats: newChats });
+      
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     } catch (err) {
       console.error('Failed to send voice message:', err);
       Alert.alert('Ошибка', 'Не удалось отправить голосовое сообщение');
@@ -445,14 +490,15 @@ export default function ChatScreen() {
     return messages.find(m => m.id === replyToId);
   };
 
-  const renderMessage = ({ item }: { item: Message }) => (
-    <ChatBubble 
+  const renderMessage = ({ item, index }: { item: Message; index: number }) => (
+    <AnimatedChatBubble 
       message={item} 
       onImagePress={handleImagePress}
       onReply={handleReply}
       onEdit={handleEdit}
       onDelete={handleDelete}
       replyMessage={getReplyMessage(item.reply_to_id)}
+      index={index}
     />
   );
 

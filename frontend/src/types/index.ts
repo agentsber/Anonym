@@ -19,7 +19,7 @@ export interface Message {
   content: string; // Decrypted content
   encrypted_content?: string;
   ephemeral_key?: string;
-  message_type: 'text' | 'image' | 'video';
+  message_type: 'text' | 'image' | 'video' | 'audio' | 'voice';
   status: 'sending' | 'sent' | 'delivered' | 'read';
   timestamp: Date;
   isOutgoing: boolean;
@@ -29,6 +29,8 @@ export interface Message {
   expires_at?: Date;
   edited?: boolean;
   deleted?: boolean;
+  media_url?: string; // URL for audio/video/image files
+  duration?: number; // Duration in seconds for audio/voice
 }
 
 export interface Chat {

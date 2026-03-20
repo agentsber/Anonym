@@ -253,13 +253,23 @@ class ConnectionManager:
         self.active_connections[user_id] = websocket
         self.user_last_seen[user_id] = datetime.utcnow()
         logger.info(f"User {user_id} connected via WebSocket")
+        # Update online status in DB
+        await db.users.update_one(
+            {"id": user_id},
+            {"$set": {"is_online": True, "last_seen": datetime.utcnow()}}
+        )
         # Broadcast online status
         await self.broadcast_status(user_id, True)
     
-    def disconnect(self, user_id: str):
+    async def disconnect(self, user_id: str):
         if user_id in self.active_connections:
             del self.active_connections[user_id]
             self.user_last_seen[user_id] = datetime.utcnow()
+            # Update offline status in DB
+            await db.users.update_one(
+                {"id": user_id},
+                {"$set": {"is_online": False, "last_seen": datetime.utcnow()}}
+            )
             logger.info(f"User {user_id} disconnected from WebSocket")
     
     async def send_personal_message(self, message: dict, user_id: str):
@@ -590,6 +600,12 @@ async def send_message(message: MessageSend):
 @api_router.get("/messages/pending/{user_id}", response_model=List[MessageResponse])
 async def get_pending_messages(user_id: str):
     """Get all pending messages for a user"""
+    # Update user's last_seen timestamp (user is active)
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"last_seen": datetime.utcnow()}}
+    )
+    
     messages = await db.messages.find({
         "receiver_id": user_id,
         "status": "pending",
@@ -707,12 +723,32 @@ async def delete_message(message_id: str, sender_id: str, for_everyone: bool = F
 @api_router.get("/users/{user_id}/status")
 async def get_user_status(user_id: str):
     """Get user online status"""
+    # First check if user is connected via WebSocket
     online = manager.is_online(user_id)
-    last_seen = manager.get_last_seen(user_id)
     
+    if online:
+        # User is currently connected
+        return {
+            "user_id": user_id,
+            "online": True,
+            "last_seen": datetime.utcnow().isoformat()
+        }
+    
+    # Check database for last_seen
+    user = await db.users.find_one({"id": user_id}, {"last_seen": 1, "is_online": 1})
+    if user:
+        last_seen = user.get("last_seen")
+        return {
+            "user_id": user_id,
+            "online": False,
+            "last_seen": last_seen.isoformat() if last_seen else None
+        }
+    
+    # Fallback to in-memory cache
+    last_seen = manager.get_last_seen(user_id)
     return {
         "user_id": user_id,
-        "online": online,
+        "online": False,
         "last_seen": last_seen.isoformat() if last_seen else None
     }
 

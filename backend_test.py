@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 # Backend API URL from frontend env
-BACKEND_URL = "https://crypto-chat-10.preview.emergentagent.com/api"
+BACKEND_URL = "https://private-social-18.preview.emergentagent.com/api"
 
 class SecureMessengerTester:
     def __init__(self):
