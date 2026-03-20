@@ -1,2 +1,10 @@
 from .auth import router as auth_router
 from .users import router as users_router
+from .messages import router as messages_router
+from .contacts import router as contacts_router
+from .media import router as media_router
+from .videos import router as videos_router
+from .calls import router as calls_router
+from .groups import router as groups_router
+from .notifications import router as notifications_router
+from .admin import router as admin_router
