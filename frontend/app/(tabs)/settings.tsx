@@ -199,6 +199,24 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.section}>
+            <TouchableOpacity 
+              style={styles.menuItem} 
+              onPress={() => router.push('/devices' as any)}
+            >
+              <View style={[styles.menuIcon, { backgroundColor: '#00D9A5' + '20' }]}>
+                <Ionicons name="phone-portrait-outline" size={20} color="#00D9A5" />
+              </View>
+              <View style={styles.menuItemContent}>
+                <Text style={styles.menuItemText}>Устройства</Text>
+                <Text style={styles.menuItemSubtext}>
+                  Активные сеансы
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.section}>
             <Text style={styles.sectionTitle}>Блокировка</Text>
             
             <TouchableOpacity style={styles.menuItem} onPress={handleSetupPin}>

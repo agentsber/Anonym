@@ -158,8 +158,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       console.log('Starting login for:', email);
       
+      // Get device info
+      const deviceInfo = {
+        device_name: Platform.OS === 'ios' ? 'iPhone' : Platform.OS === 'android' ? 'Android' : 'Web Browser',
+        device_type: Platform.OS,
+        app_version: '2.0.0',
+      };
+      
       // Login with server
-      const serverUser = await authApi.login(email, password);
+      const serverUser = await authApi.login(email, password, deviceInfo);
       console.log('Server login successful:', serverUser.id);
       
       // Check if we have local keys for this user

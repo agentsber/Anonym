@@ -34,8 +34,12 @@ export const authApi = {
     return response.data;
   },
 
-  login: async (email: string, password: string): Promise<User> => {
-    const response = await api.post('/auth/login', { email, password });
+  login: async (email: string, password: string, deviceInfo?: { device_name?: string; device_type?: string; app_version?: string }): Promise<User> => {
+    const response = await api.post('/auth/login', { 
+      email, 
+      password,
+      ...deviceInfo
+    });
     return response.data;
   },
 
