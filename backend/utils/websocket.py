@@ -53,7 +53,7 @@ class ConnectionManager:
             if uid != user_id:
                 try:
                     await connection.send_json(message)
-                except:
+                except Exception:
                     pass
     
     def is_online(self, user_id: str) -> bool:

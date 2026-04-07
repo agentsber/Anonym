@@ -11,7 +11,6 @@ import {
   Easing,
   Alert,
 } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
