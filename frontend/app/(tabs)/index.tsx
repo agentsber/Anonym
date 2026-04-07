@@ -295,6 +295,11 @@ export default function ChatsScreen() {
             }}
             keyExtractor={(item: any) => (item._isSaved ? 'saved_' : item._type + '_') + item.id}
             contentContainerStyle={styles.listContainer}
+            // Performance optimizations
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            windowSize={7}
+            initialNumToRender={15}
             refreshControl={
               <RefreshControl 
                 refreshing={refreshing} 

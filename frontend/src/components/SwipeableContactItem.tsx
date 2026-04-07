@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useCallback, memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Alert } from 'react-native';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,7 +26,7 @@ interface SwipeableContactItemProps {
   onDelete: (contactId: string) => void;
 }
 
-export const SwipeableContactItem: React.FC<SwipeableContactItemProps> = ({
+const SwipeableContactItemComponent: React.FC<SwipeableContactItemProps> = ({
   contact,
   lastMessage,
   unreadCount = 0,
@@ -267,4 +267,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 4,
   },
+});
+
+
+// Memoized component to prevent unnecessary re-renders
+export const SwipeableContactItem = memo(SwipeableContactItemComponent, (prev, next) => {
+  return (
+    prev.contact.id === next.contact.id &&
+    prev.lastMessage?.id === next.lastMessage?.id &&
+    prev.unreadCount === next.unreadCount
+  );
 });

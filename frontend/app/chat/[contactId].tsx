@@ -625,6 +625,16 @@ export default function ChatScreen() {
                 onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="interactive"
+                // Performance optimizations
+                removeClippedSubviews={true}
+                maxToRenderPerBatch={15}
+                windowSize={10}
+                initialNumToRender={20}
+                getItemLayout={(data, index) => ({
+                  length: 80,
+                  offset: 80 * index,
+                  index,
+                })}
               />
             )}
           </View>

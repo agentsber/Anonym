@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -43,7 +43,7 @@ interface ChatBubbleProps {
 const { width: screenWidth } = Dimensions.get('window');
 const maxMediaWidth = screenWidth * 0.65;
 
-export const AnimatedChatBubble: React.FC<ChatBubbleProps> = ({ 
+export const AnimatedChatBubble: React.FC<ChatBubbleProps> = memo(({ 
   message, 
   onImagePress,
   onReply,
@@ -423,7 +423,11 @@ export const AnimatedChatBubble: React.FC<ChatBubbleProps> = ({
       )}
     </Animated.View>
   );
-};
+}, (prev, next) => {
+  return prev.message.id === next.message.id && 
+         prev.message.status === next.message.status &&
+         prev.message.edited === next.message.edited;
+});
 
 // Animated sending indicator
 const SendingIndicator = () => {
