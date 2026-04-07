@@ -1,6 +1,29 @@
 import { create } from 'zustand';
-import { webRTCService, CallState } from '../services/webrtc';
+import { Platform } from 'react-native';
 import { callsApi } from '../services/api';
+
+// Dynamic import based on platform to avoid bundling react-native-webrtc on web
+const getWebRTCService = () => {
+  if (Platform.OS === 'web') {
+    return require('../services/webrtc.web').webRTCService;
+  }
+  return require('../services/webrtc').webRTCService;
+};
+
+const webRTCService = getWebRTCService();
+
+// Import CallState type
+interface CallState {
+  callId: string | null;
+  status: 'idle' | 'calling' | 'ringing' | 'connected' | 'ended';
+  isVideoEnabled: boolean;
+  isAudioEnabled: boolean;
+  isFrontCamera: boolean;
+  remoteStream: any | null;
+  localStream: any | null;
+  duration: number;
+  otherUser: string;
+}
 
 interface IncomingCall {
   callId: string;

@@ -177,19 +177,19 @@ class CallInitiate(BaseModel):
     caller_id: str
     callee_id: str
     call_type: str
-    offer: dict
+    offer: str  # JSON string of SDP offer
 
 
 class CallAnswer(BaseModel):
     call_id: str
     callee_id: str
-    answer: dict
+    answer: str  # JSON string of SDP answer
 
 
 class CallIceCandidate(BaseModel):
     call_id: str
     user_id: str
-    candidate: dict
+    candidate: str  # JSON string of ICE candidate
 
 
 class CallAction(BaseModel):

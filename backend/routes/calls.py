@@ -42,7 +42,7 @@ async def initiate_call(call: CallInitiate):
             "type": "incoming_call",
             "call_id": call_id,
             "caller_id": call.caller_id,
-            "caller_name": caller.get("username"),
+            "caller_username": caller.get("username"),
             "call_type": call.call_type,
             "offer": call.offer
         }

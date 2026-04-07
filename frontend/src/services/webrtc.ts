@@ -1,4 +1,40 @@
+import { Platform } from 'react-native';
 import { callsApi } from './api';
+
+// WebRTC globals - will be initialized based on platform
+let RTCPeerConnection: any;
+let RTCSessionDescription: any;
+let RTCIceCandidate: any;
+let mediaDevices: any;
+let webrtcInitialized = false;
+
+// Initialize WebRTC based on platform
+function initializeWebRTC() {
+  if (webrtcInitialized) return;
+  
+  if (Platform.OS === 'web') {
+    // Web WebRTC - use browser native APIs
+    RTCPeerConnection = (window as any).RTCPeerConnection || (window as any).webkitRTCPeerConnection;
+    RTCSessionDescription = (window as any).RTCSessionDescription;
+    RTCIceCandidate = (window as any).RTCIceCandidate;
+    mediaDevices = navigator.mediaDevices;
+  } else {
+    // React Native WebRTC - dynamic require to avoid bundling on web
+    try {
+      const webrtc = require('react-native-webrtc');
+      RTCPeerConnection = webrtc.RTCPeerConnection;
+      RTCSessionDescription = webrtc.RTCSessionDescription;
+      RTCIceCandidate = webrtc.RTCIceCandidate;
+      mediaDevices = webrtc.mediaDevices;
+    } catch (e) {
+      console.error('Failed to load react-native-webrtc:', e);
+    }
+  }
+  webrtcInitialized = true;
+}
+
+// Initialize on module load
+initializeWebRTC();
 
 // STUN/TURN servers for NAT traversal
 const ICE_SERVERS = [
@@ -7,6 +43,17 @@ const ICE_SERVERS = [
   { urls: 'stun:stun2.l.google.com:19302' },
   { urls: 'stun:stun3.l.google.com:19302' },
   { urls: 'stun:stun4.l.google.com:19302' },
+  // Free TURN server for testing
+  {
+    urls: 'turn:openrelay.metered.ca:80',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
 ];
 
 export interface CallState {
@@ -15,8 +62,8 @@ export interface CallState {
   isVideoEnabled: boolean;
   isAudioEnabled: boolean;
   isFrontCamera: boolean;
-  remoteStream: MediaStream | null;
-  localStream: MediaStream | null;
+  remoteStream: any | null;
+  localStream: any | null;
   duration: number;
   otherUser: string;
 }
@@ -35,13 +82,14 @@ export interface CallEvent {
 }
 
 class WebRTCService {
-  private peerConnection: RTCPeerConnection | null = null;
-  private localStream: MediaStream | null = null;
-  private remoteStream: MediaStream | null = null;
+  private peerConnection: any = null;
+  private localStream: any = null;
+  private remoteStream: any = null;
   private callId: string | null = null;
   private userId: string = '';
   private onStateChange: ((state: Partial<CallState>) => void) | null = null;
-  private iceCandidatesQueue: RTCIceCandidateInit[] = [];
+  private iceCandidatesQueue: any[] = [];
+  private isFrontCamera: boolean = true;
 
   setUserId(userId: string) {
     this.userId = userId;
@@ -57,12 +105,12 @@ class WebRTCService {
     }
   }
 
-  private createPeerConnection(): RTCPeerConnection {
+  private createPeerConnection(): any {
     const pc = new RTCPeerConnection({
       iceServers: ICE_SERVERS,
     });
 
-    pc.onicecandidate = async (event) => {
+    pc.onicecandidate = async (event: any) => {
       if (event.candidate && this.callId) {
         try {
           await callsApi.sendIceCandidate({
@@ -76,12 +124,19 @@ class WebRTCService {
       }
     };
 
-    pc.ontrack = (event) => {
-      console.log('Remote track received:', event.track.kind);
+    pc.ontrack = (event: any) => {
+      console.log('Remote track received:', event.track?.kind);
       if (event.streams && event.streams[0]) {
         this.remoteStream = event.streams[0];
         this.updateState({ remoteStream: this.remoteStream });
       }
+    };
+
+    pc.onaddstream = (event: any) => {
+      // For React Native WebRTC compatibility
+      console.log('Remote stream received');
+      this.remoteStream = event.stream;
+      this.updateState({ remoteStream: this.remoteStream });
     };
 
     pc.onconnectionstatechange = () => {
@@ -95,6 +150,9 @@ class WebRTCService {
 
     pc.oniceconnectionstatechange = () => {
       console.log('ICE connection state:', pc.iceConnectionState);
+      if (pc.iceConnectionState === 'connected') {
+        this.updateState({ status: 'connected' });
+      }
     };
 
     return pc;
@@ -102,11 +160,20 @@ class WebRTCService {
 
   async startCall(calleeId: string, callType: 'video' | 'audio' = 'video'): Promise<string | null> {
     try {
+      console.log('Starting call to:', calleeId, 'type:', callType);
+      
       // Get user media
-      this.localStream = await navigator.mediaDevices.getUserMedia({
-        video: callType === 'video',
+      const constraints = {
         audio: true,
-      });
+        video: callType === 'video' ? {
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        } : false,
+      };
+      
+      this.localStream = await mediaDevices.getUserMedia(constraints);
+      console.log('Got local stream:', this.localStream.getTracks().length, 'tracks');
 
       this.updateState({
         localStream: this.localStream,
@@ -119,15 +186,20 @@ class WebRTCService {
       this.peerConnection = this.createPeerConnection();
 
       // Add local tracks
-      this.localStream.getTracks().forEach((track) => {
+      this.localStream.getTracks().forEach((track: any) => {
         if (this.peerConnection && this.localStream) {
+          console.log('Adding track:', track.kind);
           this.peerConnection.addTrack(track, this.localStream);
         }
       });
 
       // Create offer
-      const offer = await this.peerConnection.createOffer();
+      const offer = await this.peerConnection.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: callType === 'video',
+      });
       await this.peerConnection.setLocalDescription(offer);
+      console.log('Created offer');
 
       // Send offer to server
       const response = await callsApi.initiateCall({
@@ -138,9 +210,11 @@ class WebRTCService {
       });
 
       this.callId = response.call_id;
+      console.log('Call initiated:', this.callId);
+      
       this.updateState({
         callId: this.callId,
-        otherUser: response.callee_username,
+        otherUser: response.callee_username || calleeId,
       });
 
       return this.callId;
@@ -153,13 +227,19 @@ class WebRTCService {
 
   async answerCall(callId: string, offer: string): Promise<void> {
     try {
+      console.log('Answering call:', callId);
       this.callId = callId;
 
       // Get user media
-      this.localStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+      this.localStream = await mediaDevices.getUserMedia({
         audio: true,
+        video: {
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
       });
+      console.log('Got local stream for answer');
 
       this.updateState({
         localStream: this.localStream,
@@ -172,7 +252,7 @@ class WebRTCService {
       this.peerConnection = this.createPeerConnection();
 
       // Add local tracks
-      this.localStream.getTracks().forEach((track) => {
+      this.localStream.getTracks().forEach((track: any) => {
         if (this.peerConnection && this.localStream) {
           this.peerConnection.addTrack(track, this.localStream);
         }
@@ -181,6 +261,7 @@ class WebRTCService {
       // Set remote description (the offer)
       const offerObj = JSON.parse(offer);
       await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offerObj));
+      console.log('Set remote description');
 
       // Process any queued ICE candidates
       for (const candidate of this.iceCandidatesQueue) {
@@ -191,10 +272,12 @@ class WebRTCService {
       // Create answer
       const answer = await this.peerConnection.createAnswer();
       await this.peerConnection.setLocalDescription(answer);
+      console.log('Created answer');
 
       // Send answer to server
       await callsApi.answerCall({
         call_id: callId,
+        callee_id: this.userId,
         answer: JSON.stringify(answer),
       });
 
@@ -213,6 +296,7 @@ class WebRTCService {
         return;
       }
 
+      console.log('Handling call answered');
       const answerObj = JSON.parse(answer);
       await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answerObj));
 
@@ -323,14 +407,22 @@ class WebRTCService {
     if (!videoTrack) return;
 
     try {
-      // Get current facing mode
-      const settings = videoTrack.getSettings();
-      const currentFacingMode = settings.facingMode || 'user';
-      const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+      this.isFrontCamera = !this.isFrontCamera;
+      
+      // For React Native, use _switchCamera if available
+      if (typeof videoTrack._switchCamera === 'function') {
+        videoTrack._switchCamera();
+        this.updateState({ isFrontCamera: this.isFrontCamera });
+        return;
+      }
 
-      // Get new stream with different camera
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: newFacingMode },
+      // Fallback: Get new stream with different camera
+      const newStream = await mediaDevices.getUserMedia({
+        video: { 
+          facingMode: this.isFrontCamera ? 'user' : 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
         audio: false,
       });
 
@@ -338,7 +430,7 @@ class WebRTCService {
 
       // Replace track in peer connection
       if (this.peerConnection) {
-        const sender = this.peerConnection.getSenders().find(s => s.track?.kind === 'video');
+        const sender = this.peerConnection.getSenders().find((s: any) => s.track?.kind === 'video');
         if (sender) {
           await sender.replaceTrack(newVideoTrack);
         }
@@ -351,7 +443,7 @@ class WebRTCService {
 
       this.updateState({
         localStream: this.localStream,
-        isFrontCamera: newFacingMode === 'user',
+        isFrontCamera: this.isFrontCamera,
       });
 
       // Notify other party
@@ -364,12 +456,13 @@ class WebRTCService {
       }
     } catch (error) {
       console.error('Error switching camera:', error);
+      this.isFrontCamera = !this.isFrontCamera; // Revert on error
     }
   }
 
   private cleanup(): void {
     if (this.localStream) {
-      this.localStream.getTracks().forEach(track => track.stop());
+      this.localStream.getTracks().forEach((track: any) => track.stop());
       this.localStream = null;
     }
 

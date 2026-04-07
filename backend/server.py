@@ -85,22 +85,34 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
     await manager.connect(user_id, websocket)
     try:
         while True:
-            data = await websocket.receive_json()
+            message = await websocket.receive()
             
-            if data.get("type") == "typing":
-                target_id = data.get("target_id")
-                if target_id and manager.is_online(target_id):
-                    await manager.send_personal_message({
-                        "type": "typing",
-                        "user_id": user_id,
-                        "timestamp": datetime.utcnow().isoformat()
-                    }, target_id)
-            
-            elif data.get("type") == "ping":
-                await websocket.send_json({
-                    "type": "pong",
-                    "timestamp": datetime.utcnow().isoformat()
-                })
+            if message["type"] == "websocket.receive":
+                if "text" in message:
+                    text = message["text"]
+                    if text == "ping":
+                        await websocket.send_text("pong")
+                    else:
+                        try:
+                            import json
+                            data = json.loads(text)
+                            
+                            if data.get("type") == "typing":
+                                target_id = data.get("target_id")
+                                if target_id and manager.is_online(target_id):
+                                    await manager.send_personal_message({
+                                        "type": "typing",
+                                        "user_id": user_id,
+                                        "timestamp": datetime.utcnow().isoformat()
+                                    }, target_id)
+                            
+                            elif data.get("type") == "ping":
+                                await websocket.send_json({
+                                    "type": "pong",
+                                    "timestamp": datetime.utcnow().isoformat()
+                                })
+                        except json.JSONDecodeError:
+                            pass
     
     except WebSocketDisconnect:
         await manager.disconnect(user_id)

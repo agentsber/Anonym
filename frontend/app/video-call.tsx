@@ -13,6 +13,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCallStore } from '../src/stores/callStore';
 import { useAuthStore } from '../src/stores/authStore';
 
+// Get RTCView component based on platform
+function getRTCView() {
+  if (Platform.OS !== 'web') {
+    try {
+      return require('react-native-webrtc').RTCView;
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
+}
+
+const RTCViewComponent = getRTCView();
+
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const COLORS = {
@@ -200,18 +214,30 @@ export default function VideoCallScreen() {
 
       {/* Remote Video (Full Screen) */}
       <View style={styles.remoteVideoContainer}>
-        {Platform.OS === 'web' && remoteStream ? (
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              transform: 'scaleX(-1)',
-            }}
-          />
+        {remoteStream ? (
+          Platform.OS === 'web' ? (
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                transform: 'scaleX(-1)',
+              }}
+            />
+          ) : (
+            RTCViewComponent && (
+              <RTCViewComponent
+                streamURL={remoteStream.toURL()}
+                style={styles.fullScreenVideo}
+                objectFit="cover"
+                mirror={true}
+                zOrder={0}
+              />
+            )
+          )
         ) : (
           <View style={styles.noVideoContainer}>
             <View style={styles.avatarLarge}>
@@ -241,7 +267,17 @@ export default function VideoCallScreen() {
                 borderRadius: 12,
               }}
             />
-          ) : null}
+          ) : (
+            RTCViewComponent && (
+              <RTCViewComponent
+                streamURL={localStream.toURL()}
+                style={styles.localVideo}
+                objectFit="cover"
+                mirror={isFrontCamera}
+                zOrder={1}
+              />
+            )
+          )}
         </View>
       )}
 
@@ -313,6 +349,11 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: COLORS.surface,
   },
+  fullScreenVideo: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   noVideoContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -332,6 +373,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  localVideo: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
   },
   topBar: {
     position: 'absolute',

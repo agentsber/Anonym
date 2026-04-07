@@ -366,7 +366,7 @@ export const callsApi = {
     return response.data;
   },
 
-  answerCall: async (data: { call_id: string; answer: string }) => {
+  answerCall: async (data: { call_id: string; callee_id: string; answer: string }) => {
     const response = await api.post('/calls/answer', data);
     return response.data;
   },
